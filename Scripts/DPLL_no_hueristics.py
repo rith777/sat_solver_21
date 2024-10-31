@@ -1,7 +1,7 @@
 import sys
 
 def load_my_file(path):
-    """Load a DIMACS file and grab the clauses and var count."""
+    """load a DIMACS file and grab the clauses and var count."""
     clauses_list = []
     with open(path, 'r') as f:
         for line in f:
@@ -15,7 +15,7 @@ def load_my_file(path):
     return clauses_list, var_count #return clause and var count
 
 def unit_propagate(clauses, assign):
-    """Simplify clauses with unit propagation."""
+    """simplify clauses with unit propagation."""
     has_changes = True
     while has_changes: #run until changes are found in list of clauses.
         has_changes = False
@@ -44,7 +44,7 @@ def unit_propagate(clauses, assign):
     return clauses, assign #return assignment and updated clauses without literal
 
 def eliminate_pure_lit(clauses, assign):
-    """Assign values to pure literals"""
+    """assign values to pure literals"""
     all_lits = []
     for c in clauses:
         for lit in c:
@@ -105,7 +105,7 @@ def dpll_algorithm(clauses, assign):
     return sat, result
 
 def save_my_output(path, assign, satisfiable):
-    """Writing result to output file (ex sudoku1.cnf.out)"""
+    """writing result to output file (ex sudoku1.cnf.out)"""
     output_file = path + '.out'
     with open(output_file, 'w') as output:
         if satisfiable:
