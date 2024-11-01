@@ -92,7 +92,7 @@ def dpll_algorithm(clauses, assign):
     updated_assign = assign.copy()
     updated_assign[selected_var] = True
 
-    # recursive call with updated assignment of var and filter out clauses that selected var satisfies
+    #recursive call with updated assignment of var and filter out clauses that selected var satisfies
     sat, result = dpll_algorithm([c for c in clauses if selected_var not in c],
                                         updated_assign)
     if sat: #if satisfiable return true
@@ -105,25 +105,36 @@ def dpll_algorithm(clauses, assign):
     return sat, result
 
 def save_my_output(path, assign, satisfiable):
-    """writing result to output file (ex sudoku1.cnf.out)"""
+    """Write result to output file (ex filename.out)."""
     output_file = path + '.out'
     with open(output_file, 'w') as output:
         if satisfiable:
-            for var, val in assign.items():
-                output.write(f"{var if val else -var} 0\n")
+            #write the truth assignment for each variable
+            for var in range(1, 730): #for all 729 variables that are being outputted
+                if var in assign:
+                    output.write(f"{var if assign[var] else -var} 0\n")
         else:
-            output.write("")
-
+            output.write("")  # Write empty file for unsatisfiable
 def main_flow():
-    if len(sys.argv) != 2:
-        print("Paste_in_terminal: python DPLL_no_hueristics.py <inputfilepath>")
+    if len(sys.argv) != 3:
+        print("Usage: python DPLL_no_heuristics.py <rulesfilepath> <puzzlefilepath>")
         return
 
-    input_file_path = sys.argv[1]
-    clauses, var_count = load_my_file(input_file_path)
+    rules_file_path = sys.argv[1]
+    puzzle_file_path = sys.argv[2]
+
+    # Load rules and puzzle clauses
+    rules_clauses, rules_var_count = load_my_file(rules_file_path)
+    puzzle_clauses, puzzle_var_count = load_my_file(puzzle_file_path)
+
+    # Combine clauses
+    combined_clauses = rules_clauses + puzzle_clauses
+
     assign = {}
-    is_satisfiable, final_assignment = dpll_algorithm(clauses, assign)
-    save_my_output(input_file_path, final_assignment, is_satisfiable)
+    is_satisfiable, final_assignment = dpll_algorithm(combined_clauses, assign)
+
+    # Save the result to an output file based on the puzzle path
+    save_my_output(puzzle_file_path, final_assignment, is_satisfiable)
 
     if is_satisfiable:
         print("SATISFIABLE")
