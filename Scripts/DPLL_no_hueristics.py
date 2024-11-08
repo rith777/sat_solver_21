@@ -109,12 +109,10 @@ def save_my_output(path, assign, satisfiable):
     output_file = path + '.out'
     with open(output_file, 'w') as output:
         if satisfiable:
-            #write the truth assignment for each variable
-            for var in range(1, 730): #for all 729 variables needed for the 9x9 sudoku
-                if var in assign:
-                    output.write(f"{var if assign[var] else -var} 0\n")
+            for key, value in assign.items():
+                output.write(f"{key if value else -key} 0\n")
         else:
-            output.write("")  # Write empty file for unsatisfiable
+            output.write("")   # Write empty file for unsatisfiable
 def main_flow():
     if len(sys.argv) != 3:
         print("Usage: python DPLL_no_heuristics.py <rulesfilepath> <puzzlefilepath>")
