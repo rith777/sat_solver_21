@@ -97,13 +97,11 @@ def dpll_algorithm(clauses, assign):
     # recursive call with updated assignment of var and filter out clauses that selected var satisfies
     sat, result = dpll_algorithm([c for c in clauses if selected_var not in c],
                                  updated_assign)
-    if sat:  # if satisfiable return true
-        return sat, result
-
-    # update assignment var as false and try the same recursive call
-    updated_assign[selected_var] = False
-    sat, result = dpll_algorithm([c for c in clauses if -selected_var not in c],
-                                 updated_assign)
+    if not sat:
+        # update assignment var as false and try the same recursive call
+        updated_assign[selected_var] = False
+        sat, result = dpll_algorithm([c for c in clauses if -selected_var not in c],
+                                     updated_assign)
     return sat, result
 
 
