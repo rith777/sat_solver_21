@@ -1,11 +1,11 @@
 import sys
 
 
-def load_my_file(path):
+def load_file(path):
     """load a DIMACS file and grab the clauses and var count."""
     clauses_list = []
-    with open(path, 'r') as f:
-        for line in f:
+    with open(path, 'r') as file:
+        for line in file:
             # organizing 4 columns p cnf var_count clause_count
             if line.startswith('p cnf'):
                 _, _, var_count, clause_count = line.split()
@@ -24,18 +24,18 @@ def unit_propagate(clauses, assign):
         unit_clauses = []  # hold clauses with one literal
 
         # find unit clauses
-        for c in clauses:
-            if len(c) == 1:
-                unit_clauses.append(c[0])  # adds all clauses with one var (or unit clauses)
+        for clause in clauses:
+            if len(clause) == 1:
+                unit_clauses.append(clause[0])  # adds all clauses with one var (or unit clauses)
 
         # processing unit clauses
         for unit in unit_clauses:
             assign[abs(unit)] = unit > 0  # setting var in unit clause to true or false
 
             new_clauses = []  # post unit clauses collection of clauses
-            for c in clauses:
-                if unit not in c:  # add clauses disatisfying with unit clause
-                    new_clauses.append(c)
+            for clause in clauses:
+                if unit not in clause:  # add clauses disatisfying with unit clause
+                    new_clauses.append(clause)
             clauses = new_clauses
 
             # Remove negation of unit clauses too (ex: removing p and not(p) if p is a literal)
@@ -81,8 +81,8 @@ def dpll_algorithm(clauses, assign):
         return False, {}
 
     unassigned_vars = []  # makes sure all vars are only picked once
-    for c in clauses:  # check all clauses
-        for lit in c:  # check all literals
+    for clause in clauses:  # check all clauses
+        for lit in clause:  # check all literals
             if abs(lit) not in assign:  # check if the absolute value of the literal is not in the assigned variables
                 unassigned_vars.append(abs(lit))  # add abs value of var to unassigned_vars
     if not unassigned_vars:  # if empty then it should be unsatisfiable
@@ -98,7 +98,7 @@ def dpll_algorithm(clauses, assign):
     sat, result = dpll_algorithm([c for c in clauses if selected_var not in c],
                                  updated_assign)
     if sat:  # if satisfiable return true
-        return True, result
+        return sat, result
 
     # update assignment var as false and try the same recursive call
     updated_assign[selected_var] = False
@@ -107,7 +107,7 @@ def dpll_algorithm(clauses, assign):
     return sat, result
 
 
-def save_my_output(path, assign, satisfiable):
+def save_output(path, assign, satisfiable):
     """Write result to output file (ex filename.out)."""
     output_file = path + '.out'
     sudoku_path = path.replace(".cnf", ".txt")
@@ -137,7 +137,7 @@ def pretty_matrix(matrix):
     return '\n'.join(['\t'.join([str(cell) for cell in row]) for row in matrix])
 
 
-def main_flow():
+def solve_sudoku():
     if len(sys.argv) != 3:
         print("Usage: python DPLL_no_heuristics.py <rulesfilepath> <puzzlefilepath>")
         return
@@ -146,8 +146,8 @@ def main_flow():
     puzzle_file_path = sys.argv[2]
 
     # Load rules and puzzle clauses
-    rules_clauses, rules_var_count = load_my_file(rules_file_path)
-    puzzle_clauses, puzzle_var_count = load_my_file(puzzle_file_path)
+    rules_clauses, rules_var_count = load_file(rules_file_path)
+    puzzle_clauses, puzzle_var_count = load_file(puzzle_file_path)
 
     # Combine clauses
     combined_clauses = rules_clauses + puzzle_clauses
@@ -156,7 +156,7 @@ def main_flow():
     is_satisfiable, final_assignment = dpll_algorithm(combined_clauses, assign)
 
     # Save the result to an output file based on the puzzle path
-    save_my_output(puzzle_file_path, final_assignment, is_satisfiable)
+    save_output(puzzle_file_path, final_assignment, is_satisfiable)
 
     if is_satisfiable:
         print("SATISFIABLE")
@@ -165,7 +165,7 @@ def main_flow():
 
 
 if __name__ == "__main__":
-    main_flow()
+    solve_sudoku()
 
 ## RUN using this in terminal
 # I have not tested these scripts with other sizes of sudoku but it should work with the 5 examples provided. 
