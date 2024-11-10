@@ -49,8 +49,8 @@ def unit_propagate(clauses, assign):
 def eliminate_pure_literal(clauses, assign):
     """assign values to pure literals"""
     literals = []
-    for c in clauses:
-        for literal in c:
+    for clause in clauses:
+        for literal in clause:
             literals.append(literal)  # all literals from all clauses
 
     # identifying pure lits and assigning truth valeus
@@ -61,9 +61,9 @@ def eliminate_pure_literal(clauses, assign):
             # If it's a negative pure literal (ex, ¬p), we can assign its (p) to False
 
             new_clauses = []
-            for c in clauses:  # basically discards all clauses with the pure literal returns updated list of clauses
-                if literal not in c:
-                    new_clauses.append(c)
+            for clause in clauses:  # basically discards all clauses with the pure literal returns updated list of clauses
+                if literal not in clause:
+                    new_clauses.append(clause)
             clauses = new_clauses
     return clauses, assign
 
@@ -77,14 +77,14 @@ def dpll_algorithm(clauses, assign):
 
     if not clauses:  # All clauses satisfied so return true (solution found!!!)
         return True, assign
-    if any(len(c) == 0 for c in clauses):  # Found an unsatisfiable clause
+    if any(len(clause) == 0 for clause in clauses):  # Found an unsatisfiable clause
         return False, {}
 
     unassigned_vars = []  # makes sure all vars are only picked once
     for clause in clauses:  # check all clauses
-        for lit in clause:  # check all literals
-            if abs(lit) not in assign:  # check if the absolute value of the literal is not in the assigned variables
-                unassigned_vars.append(abs(lit))  # add abs value of var to unassigned_vars
+        for literal in clause:  # check all literals
+            if abs(literal) not in assign:  # check if the absolute value of the literal is not in the assigned variables
+                unassigned_vars.append(abs(literal))  # add abs value of var to unassigned_vars
     if not unassigned_vars:  # if empty then it should be unsatisfiable
         return False, {}
 
@@ -95,13 +95,13 @@ def dpll_algorithm(clauses, assign):
     updated_assign[selected_var] = True
 
     # recursive call with updated assignment of var and filter out clauses that selected var satisfies
-    sat, result = dpll_algorithm([c for c in clauses if selected_var not in c],
+    sat, result = dpll_algorithm([clause for clause in clauses if selected_var not in clause],
                                  updated_assign)
     if not sat:
         # update assignment var as false and try the same recursive call
         updated_assign[selected_var] = False
-        sat, result = dpll_algorithm([c for c in clauses if -selected_var not in c],
-                                     updated_assign)
+        new_clauses = [clause for clause in clauses if -selected_var not in clause]
+        sat, result = dpll_algorithm(new_clauses, updated_assign)
     return sat, result
 
 
@@ -135,23 +135,9 @@ def pretty_matrix(matrix):
     return '\n'.join(['\t'.join([str(cell) for cell in row]) for row in matrix])
 
 
-def solve_sudoku():
-    if len(sys.argv) != 3:
-        print("Usage: python DPLL_no_heuristics.py <rulesfilepath> <puzzlefilepath>")
-        return
-
-    rules_file_path = sys.argv[1]
-    puzzle_file_path = sys.argv[2]
-
-    # Load rules and puzzle clauses
-    rules_clauses, rules_var_count = load_file(rules_file_path)
-    puzzle_clauses, puzzle_var_count = load_file(puzzle_file_path)
-
-    # Combine clauses
-    combined_clauses = rules_clauses + puzzle_clauses
-
+def solve_sudoku(clauses):
     assign = {}
-    is_satisfiable, final_assignment = dpll_algorithm(combined_clauses, assign)
+    is_satisfiable, final_assignment = dpll_algorithm(clauses, assign)
 
     # Save the result to an output file based on the puzzle path
     save_output(puzzle_file_path, final_assignment, is_satisfiable)
@@ -163,7 +149,20 @@ def solve_sudoku():
 
 
 if __name__ == "__main__":
-    solve_sudoku()
+    if len(sys.argv) != 3:
+        print("Usage: python DPLL_no_heuristics.py <rulesfilepath> <puzzlefilepath>")
+    else:
+        rules_file_path = sys.argv[1]
+        puzzle_file_path = sys.argv[2]
+
+        # Load rules and puzzle clauses
+        rules_clauses, rules_var_count = load_file(rules_file_path)
+        puzzle_clauses, puzzle_var_count = load_file(puzzle_file_path)
+
+        # Combine clauses
+        combined_clauses = rules_clauses + puzzle_clauses
+
+        solve_sudoku(combined_clauses)
 
 ## RUN using this in terminal
 # I have not tested these scripts with other sizes of sudoku but it should work with the 5 examples provided. 
