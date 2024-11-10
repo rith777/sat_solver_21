@@ -18,16 +18,9 @@ def load_file(path):
 
 def unit_propagate(clauses, assign):
     """simplify clauses with unit propagation."""
-    has_changes = True
-    while has_changes:  # run until changes are found in list of clauses.
-        has_changes = False
-        unit_clauses = []  # hold clauses with one literal
+    while not len(clauses) == 0:  # run until changes are found in list of clauses.
 
-        # find unit clauses
-        for clause in clauses:
-            if len(clause) == 1:
-                unit_clauses.append(clause[0])  # adds all clauses with one var (or unit clauses)
-
+        unit_clauses = find_all_unit_literals_in(clauses)
         # processing unit clauses
         for unit in unit_clauses:
             assign[abs(unit)] = unit > 0  # setting var in unit clause to true or false
@@ -40,8 +33,11 @@ def unit_propagate(clauses, assign):
             for clause in clauses:
                 if -unit in clause:  # if negated unit clause in clause you can remove it from the clause
                     clause.remove(-unit)
-            has_changes = True  # revert boolean to say change has been made.
     return clauses, assign  # return assignment and updated clauses without literal
+
+
+def find_all_unit_literals_in(clauses):
+    return [clause[0] for clause in clauses if len(clause) == 1]
 
 
 def eliminate_pure_literal(clauses, assign):
@@ -72,29 +68,30 @@ def dpll_algorithm(clauses, assign):
     if any(len(clause) == 0 for clause in clauses):  # Found an unsatisfiable clause
         return False, {}
 
-    unassigned_vars = []  # makes sure all vars are only picked once
-    for clause in clauses:  # check all clauses
-        for literal in clause:  # check all literals
-            if abs(literal) not in assign:  # check if the absolute value of the literal is not in the assigned variables
-                unassigned_vars.append(abs(literal))  # add abs value of var to unassigned_vars
-    if not unassigned_vars:  # if empty then it should be unsatisfiable
+    unassigned = find_unassigned_literals(assign, clauses)
+    # makes sure all vars are only picked once
+    if not unassigned:  # if empty then it should be unsatisfiable
         return False, {}
 
-    selected_var = unassigned_vars[0]  # take the first one
+    selected_var = unassigned[0]  # take the first one
 
     # Try assigning True to the selected variable
     updated_assign = assign.copy()
     updated_assign[selected_var] = True
 
     # recursive call with updated assignment of var and filter out clauses that selected var satisfies
-    sat, result = dpll_algorithm([clause for clause in clauses if selected_var not in clause],
-                                 updated_assign)
+    new_clauses = [clause for clause in clauses if selected_var not in clause]
+    sat, result = dpll_algorithm(new_clauses, updated_assign)
     if not sat:
         # update assignment var as false and try the same recursive call
         updated_assign[selected_var] = False
         new_clauses = [clause for clause in clauses if -selected_var not in clause]
         sat, result = dpll_algorithm(new_clauses, updated_assign)
     return sat, result
+
+
+def find_unassigned_literals(assign, clauses):
+    return [abs(literal) for clause in clauses for literal in clause if abs(literal) not in assign]
 
 
 def save_output(path, assign, satisfiable):
