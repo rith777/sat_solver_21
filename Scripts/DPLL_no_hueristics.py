@@ -32,10 +32,8 @@ def unit_propagate(clauses, assign):
         for unit in unit_clauses:
             assign[abs(unit)] = unit > 0  # setting var in unit clause to true or false
 
-            new_clauses = []  # post unit clauses collection of clauses
-            for clause in clauses:
-                if unit not in clause:  # add clauses disatisfying with unit clause
-                    new_clauses.append(clause)
+            new_clauses = [clause for clause in clauses if unit not in clause]
+
             clauses = new_clauses
 
             # Remove negation of unit clauses too (ex: removing p and not(p) if p is a literal)
@@ -48,10 +46,7 @@ def unit_propagate(clauses, assign):
 
 def eliminate_pure_literal(clauses, assign):
     """assign values to pure literals"""
-    literals = []
-    for clause in clauses:
-        for literal in clause:
-            literals.append(literal)  # all literals from all clauses
+    literals = [literal for clause in clauses for literal in clause]
 
     # identifying pure lits and assigning truth valeus
     for literal in set(literals):
@@ -60,11 +55,8 @@ def eliminate_pure_literal(clauses, assign):
             # if it's a positive pure literal (ex p), we can assign it true
             # If it's a negative pure literal (ex, ¬p), we can assign its (p) to False
 
-            new_clauses = []
-            for clause in clauses:  # basically discards all clauses with the pure literal returns updated list of clauses
-                if literal not in clause:
-                    new_clauses.append(clause)
-            clauses = new_clauses
+            new_clauses = [clause for clause in clauses if literal not in clause]
+            clauses = new_clauses  # basically discards all clauses with the pure literal returns updated list of clauses
     return clauses, assign
 
 
@@ -123,6 +115,7 @@ def convert_to_cnf(results):
 
 def convert_to_matrix(matrix):
     sudoku = [[0 for _ in range(9)] for _ in range(9)]
+
     for key, value in matrix.items():
         if value:
             row, column, value = list(str(key).strip())
