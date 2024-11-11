@@ -158,7 +158,7 @@ if __name__ == "__main__":
         solve_sudoku(combined_clauses)
 
 ## RUN using this in terminal
-    
+
 # I have not tested these scripts with other sizes of sudoku but it should work with the 5 examples provided.
 # EX: python C:\github\sat_solver\sat_solver_21\Scripts\sat_solver_no_hueristics.py C:\github\sat_solver\sat_solver_21\sudoku_rules-9x9.cnf C:\github\sat_solver\sat_solver_21\examples\sudoku1.cnf
 
