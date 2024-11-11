@@ -100,7 +100,7 @@ def save_output(path, assign, satisfiable):
     sudoku_path = path.replace(".cnf", ".txt")
     if satisfiable:
         with open(output_file, 'w') as output:
-            output.write("0\n".join(convert_to_cnf(assign)))
+            output.write("0 \n".join(convert_to_cnf(assign)))
 
         with open(sudoku_path, mode='w') as sudoku:
             sudoku.write(pretty_matrix(convert_to_matrix(assign)))  # Write empty file for unsatisfiable
