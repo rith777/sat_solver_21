@@ -47,17 +47,17 @@ class CDCL:
                     break
             if not unit_clause:
                 return None  # No more unit clauses to propagate
-            self.assign(unit_clause, reason='propagation')
+            self.assign(unit_clause, clause=clause)
             if self.conflict_clause:
                 return self.conflict_clause  # Return conflict clause
 
-    def assign(self, literal, reason):
+    def assign(self, literal, clause):
         """Assigns a value to a variable and logs the decision level."""
         var = abs(literal)
         value = literal > 0
         if var in self.assignment:
             if self.assignment[var] != value:
-                self.conflict_clause = reason  # Conflict detected
+                self.conflict_clause = clause  # Conflict detected
             return
         self.assignment[var] = value
         self.decision_stack.append((var, self.decision_level))
@@ -70,12 +70,11 @@ class CDCL:
         self.decision_level = level
 
     def solve(self):
-        """Main solving function using CDCL with VSIDS."""
+        """Main solving function using VSIDS."""
         while True:
             # Perform unit propagation; if conflicts, analyze conflict
             conflict_clause = self.unit_propagate()
             if conflict_clause is not None:
-                # Conflict analysis (simplified for this example)
                 self.increment_score(conflict_clause)  # Update VSIDS scores
                 self.decay_scores()  # Decay scores periodically
                 backtrack_level = max(0, self.decision_level - 1)
@@ -90,7 +89,7 @@ class CDCL:
                 # Make a decision and increase decision level
                 self.decision_level += 1
                 decision = random.choice([True, False])
-                self.assign(var if decision else -var, reason='decision')
+                self.assign(var if decision else -var, None)
 
     def get_solution(self):
         """Returns the current assignment as the solution."""
