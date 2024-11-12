@@ -18,8 +18,10 @@ def load_file(path):
 
 def unit_propagate(clauses, assign):
     """simplify clauses with unit propagation."""
-    while not len(clauses) == 0:  # run until changes are found in list of clauses.
 
+    has_changes = True
+    while has_changes:  # run until changes are found in list of clauses.
+        has_changes = False
         unit_clauses = find_all_unit_literals_in(clauses)
         # processing unit clauses
         for unit in unit_clauses:
@@ -33,6 +35,7 @@ def unit_propagate(clauses, assign):
             for clause in clauses:
                 if -unit in clause:  # if negated unit clause in clause you can remove it from the clause
                     clause.remove(-unit)
+            has_changes = True
     return clauses, assign  # return assignment and updated clauses without literal
 
 
@@ -100,7 +103,7 @@ def save_output(path, assign, satisfiable):
     sudoku_path = path.replace(".cnf", ".txt")
     if satisfiable:
         with open(output_file, 'w') as output:
-            output.write("0 \n".join(convert_to_cnf(assign)))
+            output.write(" 0 \n".join(convert_to_cnf(assign)))
 
         with open(sudoku_path, mode='w') as sudoku:
             sudoku.write(pretty_matrix(convert_to_matrix(assign)))  # Write empty file for unsatisfiable
@@ -158,4 +161,3 @@ if __name__ == "__main__":
 
 # I have not tested these scripts with other sizes of sudoku but it should work with the 5 examples provided.
 # EX: python C:\github\sat_solver\sat_solver_21\Scripts\sat_solver_no_hueristics.py C:\github\sat_solver\sat_solver_21\sudoku_rules-9x9.cnf C:\github\sat_solver\sat_solver_21\examples\sudoku1.cnf
-
