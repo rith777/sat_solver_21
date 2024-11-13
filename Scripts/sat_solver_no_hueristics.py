@@ -1,19 +1,7 @@
 import sys
 
-
-def load_file(path):
-    """load a DIMACS file and grab the clauses and var count."""
-    clauses_list = []
-    with open(path, 'r') as file:
-        for line in file:
-            # organizing 4 columns p cnf var_count clause_count
-            if line.startswith('p cnf'):
-                _, _, var_count, clause_count = line.split()
-                var_count, clause_count = int(var_count), int(clause_count)
-            else:
-                clause = list(map(int, line.strip().split()))[:-1]
-                clauses_list.append(clause)  # add clause to list of clauses
-    return clauses_list, var_count  # return clause and var count
+from helpers.dimacs_reader import read_dimacs_file
+from helpers.sat_outcome_converter import from_dict_to_cnf, from_dict_to_matrix, pretty_matrix
 
 
 def unit_propagate(clauses, assign):
@@ -103,29 +91,10 @@ def save_output(path, assign, satisfiable):
     sudoku_path = path.replace(".cnf", ".txt")
     if satisfiable:
         with open(output_file, 'w') as output:
-            output.write(" 0 \n".join(convert_to_cnf(assign)))
+            output.write(" 0 \n".join(from_dict_to_cnf(assign)))
 
         with open(sudoku_path, mode='w') as sudoku:
-            sudoku.write(pretty_matrix(convert_to_matrix(assign)))  # Write empty file for unsatisfiable
-
-
-def convert_to_cnf(results):
-    return [str(key) if value else str(-key) for key, value in results.items()]
-
-
-def convert_to_matrix(matrix):
-    sudoku = [[0 for _ in range(9)] for _ in range(9)]
-
-    for key, value in matrix.items():
-        if value:
-            row, column, value = list(str(key).strip())
-            sudoku[int(row) - 1][int(column) - 1] = int(value)
-
-    return sudoku
-
-
-def pretty_matrix(matrix):
-    return '\n'.join(['\t'.join([str(cell) for cell in row]) for row in matrix])
+            sudoku.write(pretty_matrix(from_dict_to_matrix(assign)))  # Write empty file for unsatisfiable
 
 
 def solve_sudoku(clauses):
@@ -149,8 +118,8 @@ if __name__ == "__main__":
         puzzle_file_path = sys.argv[2]
 
         # Load rules and puzzle clauses
-        rules_clauses, rules_var_count = load_file(rules_file_path)
-        puzzle_clauses, puzzle_var_count = load_file(puzzle_file_path)
+        rules_clauses, rules_var_count = read_dimacs_file(rules_file_path)
+        puzzle_clauses, puzzle_var_count = read_dimacs_file(puzzle_file_path)
 
         # Combine clauses
         combined_clauses = rules_clauses + puzzle_clauses
