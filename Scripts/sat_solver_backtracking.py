@@ -2,8 +2,6 @@ import sys
 
 from helpers.dimacs_reader import read_dimacs_file
 from helpers.sat_outcome_converter import from_dict_to_cnf, from_dict_to_matrix, pretty_matrix
-
-
 def unit_propagate(clauses, assign):
     """Simplify clauses with unit propagation."""
     has_changes = True
@@ -13,11 +11,10 @@ def unit_propagate(clauses, assign):
         has_changes = False
         unit_clauses = find_all_unit_literals_in(clauses)
 
-        # Debugging: Count and show number of unit clauses found
         print(f"Unit propagation round: {len(unit_clauses)} unit clauses found.")
 
         for unit in unit_clauses:
-            assign[abs(unit)] = unit > 0
+            assign[abs(unit)] = unit > 0  # Set the variable's value
             clauses = [clause for clause in clauses if unit not in clause]
 
             # Remove negation of unit clause
@@ -27,9 +24,9 @@ def unit_propagate(clauses, assign):
             has_changes = True
             unit_count += 1
 
-    # Debugging: Total unit clauses processed
     print(f"Total unit clauses processed: {unit_count}")
     return clauses, assign
+
 
 
 def find_all_unit_literals_in(clauses):
@@ -42,16 +39,16 @@ def eliminate_pure_literal(clauses, assign):
     # identifying pure literals
     pure_literals = [literal for literal in set(literals) if -literal not in literals]
 
-    # Debugging: Show pure literals count for each elimination round
     print(f"Pure literal elimination round: {len(pure_literals)} pure literals found.")
 
     for literal in pure_literals:
         assign[abs(literal)] = literal > 0  # Set true or false for positive or negative pure lit
         clauses = [clause for clause in clauses if literal not in clause]
 
-
     print(f"Total pure literals eliminated: {len(pure_literals)}")
     return clauses, assign
+
+import random
 
 def dpll_algorithm(clauses, assign, decision_stack, attempt_count=0, backtrack_count=0):
     """DPLL algorithm with backtracking."""
@@ -83,7 +80,8 @@ def dpll_algorithm(clauses, assign, decision_stack, attempt_count=0, backtrack_c
         print("No unassigned literals left to process.")
         return False, {}
 
-    selected_var = unassigned[0]  # Choose the first unassigned variable
+    # Randomly select a variable to assign
+    selected_var = random.choice(unassigned)  # Randomly choose from unassigned literals
     decision_stack.append(selected_var)  # Track the decision for backtracking
 
     # Try assigning True to the selected variable
@@ -119,10 +117,12 @@ def is_valid_assignment(assign):
     """Check if all variables have been assigned a valid value (no 0s)."""
     return all(value is not None for value in assign.values())
 
+
+
+
+
 def find_unassigned_literals(assign, clauses):
     unassigned = [abs(literal) for clause in clauses for literal in clause if abs(literal) not in assign]
-
-
     return unassigned
 
 
@@ -130,6 +130,14 @@ def save_output(path, assign, satisfiable):
     """Write result to output file (ex filename.out)."""
     output_file = path + '.out'
     sudoku_path = path.replace(".cnf", ".txt")
+
+    # Debugging: Check the assignment dictionary
+    missing_vars = [var for var in range(1, 730) if var not in assign or assign[var] is None]
+    if missing_vars:
+        print(f"ERROR: The following variables are missing assignments: {missing_vars}")
+    else:
+        print("All variables assigned.")
+
     if satisfiable:
         with open(output_file, 'w') as output:
             result = from_dict_to_cnf(assign)
@@ -147,6 +155,7 @@ def save_output(path, assign, satisfiable):
         with open(sudoku_path, mode='w') as sudoku:
             sudoku.write("UNSATISFIABLE\n")
 
+
 def solve_sudoku(clauses):
     assign = {}
     decision_stack = []  # Initialize the decision stack
@@ -161,7 +170,7 @@ def solve_sudoku(clauses):
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        print("Usage: python sat_solver_no_heuristics.py <rulesfilepath> <puzzlefilepath>")
+        print("Usage: python sat_solver_backtracking.py <rulesfilepath> <puzzlefilepath>")
     else:
         rules_file_path = sys.argv[1]
         puzzle_file_path = sys.argv[2]
@@ -174,9 +183,3 @@ if __name__ == "__main__":
         combined_clauses = rules_clauses + puzzle_clauses
 
         solve_sudoku(combined_clauses)
-
-
-## RUN using this in terminal
-
-# I have not tested these scripts with other sizes of sudoku but it should work with the 5 examples provided.
-# EX: python C:\github\sat_solver\sat_solver_21\Scripts\sat_solver_no_hueristics.py C:\github\sat_solver\sat_solver_21\sudoku_rules-9x9.cnf C:\github\sat_solver\sat_solver_21\examples\sudoku1.cnf

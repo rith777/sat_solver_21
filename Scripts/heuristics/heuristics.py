@@ -1,21 +1,26 @@
-import abc
+from abc import ABC, abstractmethod
 from collections import defaultdict
 
 
-class Heuristics:
+class Heuristics(ABC):
     def __init__(self):
         self.scores = defaultdict(int)
+        self.last_conflict = defaultdict(int)
 
-    @abc.abstractmethod
+    @abstractmethod
     def initialize_scores(self, clauses):
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def conflict(self, conflict_clause):
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def decay_scores(self):
+        pass
+
+    @abstractmethod
+    def update_scores(self, variable, reward):
         pass
 
     def decide(self, assigned_literals):

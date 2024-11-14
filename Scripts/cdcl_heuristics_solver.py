@@ -5,6 +5,7 @@ from enum import Enum, auto
 from Scripts.helpers.dimacs_reader import read_dimacs_file
 from Scripts.helpers.sat_outcome_converter import from_list_to_matrix, pretty_matrix
 from Scripts.heuristics.VSIDS import VSIDSHeuristics
+from Scripts.heuristics.CHB import CHBHeuristics
 
 Pair = namedtuple('Pair', ['first', 'second'])
 
@@ -249,7 +250,7 @@ if __name__ == "__main__":
 
     start_time = time.process_time()
 
-    sat_solver = CDCLSatSolver(clauses, num_var, VSIDSHeuristics())
+    sat_solver = CDCLSatSolver(clauses, num_var, CHBHeuristics())
     solution = sat_solver.solve()
 
     end_time = time.process_time()
