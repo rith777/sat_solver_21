@@ -1,4 +1,4 @@
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from enum import Enum, auto
 
 Pair = namedtuple('Pair', ['first', 'second'])
@@ -58,13 +58,15 @@ class CDCLSatSolver:
         self.heuristics = heuristics
         self.statistics = Statistics()
 
-    def solve(self):
+        self.literal_watch = defaultdict(list)
+        self.clauses_literal_watched = defaultdict(list)
 
+    def solve(self):
         self.unit_propagation()
         if self.clauses == Status.CONFLICT:
             return SATResult.UNSATISFIABLE
 
-        literal_watch, clauses_literal_watched = self.initialize_watch_list()
+        self.initialize_watch_list()
         self.heuristics.initialize_scores(self.clauses)
 
         while not self.are_all_variables_assigned():  # While variables remain to assign
@@ -75,14 +77,14 @@ class CDCLSatSolver:
                 return SATResult.SATISFIABLE  # No variable to decide, meaning the solution is SAT
 
             self.assign(variable)
-            conflict, literal_watch = self.two_watch_propagate(literal_watch, clauses_literal_watched, variable)
+            conflict = self.two_watch_propagate(variable)
 
             while conflict != -1:
                 self.heuristics.conflict(conflict)
 
                 learned_clause = self.analyze_conflict()  # Diagnose Conflict
 
-                self.learn_clauses(literal_watch, clauses_literal_watched, learned_clause)
+                self.learn_clauses(learned_clause)
                 self.statistics.increment_learned_counter()
 
                 self.statistics.update_implications_counter(self.calculate_implications())
@@ -92,7 +94,9 @@ class CDCLSatSolver:
                 if jump_status == Status.FAILED:
                     return SATResult.UNSATISFIABLE
                 self.assignment.append(var)
-                conflict, literal_watch = self.two_watch_propagate(literal_watch, clauses_literal_watched, var)
+                conflict = self.two_watch_propagate(var)
+
+        return SATResult.SATISFIABLE
 
     def calculate_implications(self):
         return self.statistics.implications_counter + len(self.assignment) - len(self.decision_levels)
@@ -133,10 +137,6 @@ class CDCLSatSolver:
         return Status.SUCCESS, new_clauses
 
     def initialize_watch_list(self):
-        literal_watch = {literal: [] for literal in range(-self.total_variables, self.total_variables + 1)}
-
-        clauses_literal_watched = []
-
         for clause_index, clause in enumerate(self.clauses):
             unassigned_literals = [lit for lit in clause if lit not in self.assignment]
 
@@ -145,12 +145,12 @@ class CDCLSatSolver:
 
             watched_literals = unassigned_literals[:2]
 
-            clauses_literal_watched.append(watched_literals)
+            self.clauses_literal_watched[clause_index] = watched_literals
 
             for lit in watched_literals:
-                literal_watch[lit].append(clause_index)
+                self.literal_watch[lit].append(clause_index)
 
-        return literal_watch, clauses_literal_watched
+        return self.literal_watch, self.clauses_literal_watched
 
     def are_all_variables_assigned(self):
         return True if len(self.assignment) >= self.total_variables else False
@@ -162,37 +162,38 @@ class CDCLSatSolver:
 
         self.assignment.append(variable)
 
-    def two_watch_propagate(self, literal_watch, clauses_literal_watched, variable):
+    def two_watch_propagate(self, variable):
         propagation_queue = [variable]
         while len(propagation_queue) != 0:
             variable = propagation_queue.pop()
 
-            for affected_claus_num in reversed(literal_watch[-variable]):
+            for affected_claus_num in reversed(self.literal_watch[-variable]):
                 affected_claus = self.clauses[affected_claus_num]
-                watched_clauses = Pair(clauses_literal_watched[affected_claus_num][0],
-                                       clauses_literal_watched[affected_claus_num][1])
+                watched_clauses = Pair(self.clauses_literal_watched[affected_claus_num][0],
+                                       self.clauses_literal_watched[affected_claus_num][1])
 
                 previously_watched_clauses = watched_clauses
-                status, watched_clauses, unit = self.check_status(affected_claus, watched_clauses)
+                status, watched_clauses, unit = self.evaluate_clause_status(affected_claus, watched_clauses)
                 if status == ClauseStatus.UNIT:
                     propagation_queue.append(unit)
                     self.assignment.append(unit)
                 elif status == ClauseStatus.UNSATISFIED:
-                    return affected_claus, literal_watch
+                    return affected_claus
 
                 for _, value in previously_watched_clauses._asdict().items():
-                    literal_watch[value].remove(affected_claus_num)
+                    self.literal_watch[value].remove(affected_claus_num)
 
                 for index, (_, clause_value) in enumerate(watched_clauses._asdict().items()):
-                    clauses_literal_watched[affected_claus_num][index] = clause_value
-                    literal_watch[clause_value].append(affected_claus_num)
+                    self.clauses_literal_watched[affected_claus_num][index] = clause_value
+                    self.literal_watch[clause_value].append(affected_claus_num)
 
-        return -1, literal_watch
+        return -1
 
-    def check_status(self, clause, watched_clauses):
+    def evaluate_clause_status(self, clause, watched_clauses):
         unit = 0
-        if watched_clauses.first in self.assignment or watched_clauses.second in self.assignment:
+        if self.are_watched_clauses_already_assigned(watched_clauses):
             return ClauseStatus.SATISFIED, watched_clauses, unit
+
         unassigned_literals = []
         for literal in clause:
             if -literal not in self.assignment:
@@ -201,12 +202,16 @@ class CDCLSatSolver:
                 clauses_to_watch = self.determine_clauses_to_watch(literal, watched_clauses)
 
                 return ClauseStatus.SATISFIED, clauses_to_watch, unit
+
         if len(unassigned_literals) == 1:
             return ClauseStatus.UNIT, watched_clauses, unassigned_literals[0]
         if len(unassigned_literals) == 0:
             return ClauseStatus.UNSATISFIED, watched_clauses, unit
         else:
             return ClauseStatus.UNRESOLVED, Pair(unassigned_literals[0], unassigned_literals[1]), unit
+
+    def are_watched_clauses_already_assigned(self, watched_clauses):
+        return watched_clauses.first in self.assignment or watched_clauses.second in self.assignment
 
     def determine_clauses_to_watch(self, literal, watched_clauses):
         if -watched_clauses.first not in self.assignment:
@@ -220,18 +225,18 @@ class CDCLSatSolver:
             learn.append(-self.assignment[level])
         return learn
 
-    def learn_clauses(self, literal_watch, clauses_literal_watched, learned_clause):
+    def learn_clauses(self, learned_clause):
         if len(learned_clause) == 1:
             self.assignment.append(learned_clause[0])
 
         if len(learned_clause) > 1:
             self.clauses.append(learned_clause)
-            learned_clauses = [learned_clause[0], learned_clause[1]]
-            clauses_literal_watched.append(learned_clauses)
+            learned_clauses = learned_clause[:2]
             index = len(self.clauses) - 1
+            self.clauses_literal_watched[index] = learned_clauses
 
             for item in learned_clauses:
-                literal_watch[item].append(index)
+                self.literal_watch[item].append(index)
 
     def backjump(self):
         if not self.decision_levels:
