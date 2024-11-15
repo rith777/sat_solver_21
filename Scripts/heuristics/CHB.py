@@ -1,5 +1,4 @@
 from collections import defaultdict
-
 from Scripts.heuristics.heuristics import Heuristics
 
 class CHBHeuristics(Heuristics):
@@ -9,71 +8,50 @@ class CHBHeuristics(Heuristics):
         self.min_alpha = min_alpha
         self.decay_rate = decay_rate
         self.conflict_count = 0
-        self.Q = defaultdict(lambda: 0)  # Q score for each variable
-        self.last_conflict = defaultdict(lambda: 0)  # Last conflict for each variable
 
     def initialize_scores(self, clauses):
+        """Initialize Q and last_conflict for all variables involved in clauses."""
         for clause in clauses:
             for literal in clause:
-                if literal not in self.Q:
-                    self.Q[literal] = 0
-                if literal not in self.last_conflict:
-                    self.last_conflict[literal] = 0
+                # Initialize to default value (0) if not already present
+                self.scores[literal]
+                self.last_conflict[literal]
 
     def conflict(self, conflict_clause):
+        """Handle the conflict by updating Q scores and tracking the conflict."""
         self.conflict_count += 1
         for literal in conflict_clause:
-            reward = self.calculate_reward(literal)
-            self.Q[literal] = (1 - self.alpha) * self.Q[literal] + self.alpha * reward
+            reward = self._calculate_reward(literal)
+            self.scores[literal] = (1 - self.alpha) * self.scores[literal] + self.alpha * reward
             self.last_conflict[literal] = self.conflict_count
-        self.decay_alpha()
-
-    def calculate_reward(self, literal):
-        last_conflict = self.last_conflict[literal]
-        reward = 1 / (self.conflict_count - last_conflict + 1)
-        return reward
-
-    def decay_alpha(self):
-        if self.alpha > self.min_alpha:
-            self.alpha = max(self.min_alpha, self.alpha - self.decay_rate)
-
-    def update_scores(self, variable, reward):
-        self.Q[variable] = (1 - self.alpha) * self.Q[variable] + self.alpha * reward
+        self._decay_alpha()
 
     def decay_scores(self):
-        for literal in self.Q:
-            self.Q[literal] *= self.alpha
+        """Decay all scores by multiplying with the current alpha."""
+        for literal in self.scores:
+            self.scores[literal] *= self.alpha
+
+    def update_scores(self, variable, reward):
+        """Update the score for a given variable based on the reward."""
+        self.scores[variable] = (1 - self.alpha) * self.scores[variable] + self.alpha * reward
 
     def decide(self, assigned_literals):
-        max_score, best_var = -float('inf'), None
-        assigned_set = set(assigned_literals)
-        for literal, score in self.Q.items():
-            if score > max_score and literal not in assigned_set and -literal not in assigned_set:
-                max_score, best_var = score, literal
-
+        """Decide on the next variable to assign based on the current scores."""
+        # Exclude already assigned variables
+        unassigned = set(self.scores.keys()) - set(assigned_literals) - set(-literal for literal in assigned_literals)
+        best_var = max(unassigned, key=lambda x: self.scores[x], default=None)
+        # Print the value of best_var and its type
+        print(f"Decided best_var: {best_var}, Type: {type(best_var)}")  # Debugging output
         if best_var is None:
-            print("No unassigned variable available. Returning 'SAT'.")
-            return "SAT"  # No more unassigned variables
-
-        # Debugging output
-        print(f"Decided variable: {best_var}, Type: {type(best_var)}")  # Add this print
+            return None  # If no variable is available, return None instead of "SAT"
         return int(best_var)  # Ensure the returned value is an integer
 
-    def two_watch_propagate(self, literal_watch, clauses_literal_watched, variable):
-        print(f"Before conversion: variable={variable}, Type={type(variable)}")  # Debugging output
+    # CHB specific
+    def _calculate_reward(self, literal):
+        """Calculate reward for a literal based on the conflict count."""
+        return 1 / (self.conflict_count - self.last_conflict[literal] + 1)
 
-        # Ensure variable is an integer before negation
-        variable = int(variable)  # Explicitly cast variable to int
-
-        print(f"After conversion: variable={variable}, Type={type(variable)}")  # Debugging output
-
-        try:
-            # Check type of literal_watch[-variable] before usage
-            print(f"Accessing literal_watch[-variable]: {literal_watch[-variable]}")
-            for affected_claus_num in reversed(literal_watch[-variable]):
-                # Your logic for propagating clauses here
-                pass
-        except Exception as e:
-            print(f"Error accessing literal_watch[-variable]: {e}")
-            raise
-
+    def _decay_alpha(self):
+        """Decay alpha based on the conflict count."""
+        if self.alpha > self.min_alpha:
+            self.alpha = max(self.min_alpha, self.alpha - self.decay_rate)

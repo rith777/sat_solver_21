@@ -76,6 +76,10 @@ class CDCLSatSolver:
         while not self.are_all_variables_assigned():  # While variables remain to assign
             variable = self.heuristics.decide(self.assignment)  # Decide : Pick a variable
 
+            ###added by rith!!!!
+            if variable is None:
+                return SATResult.SATISFIABLE  # No variable to decide, meaning the solution is SAT
+
             self.assign(variable)
             conflict, literal_watch = self.two_watch_propagate(literal_watch, clauses_literal_watched, variable)
 
@@ -246,7 +250,7 @@ class CDCLSatSolver:
 
 
 if __name__ == "__main__":
-    clauses, num_var = read_dimacs_file('../examples/sudoku5.cnf')
+    clauses, num_var = read_dimacs_file('../examples/sudoku3.cnf')
 
     start_time = time.process_time()
 
