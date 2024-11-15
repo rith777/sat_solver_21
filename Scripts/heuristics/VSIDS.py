@@ -1,5 +1,6 @@
 from Scripts.heuristics.heuristics import Heuristics
 
+
 class VSIDSHeuristics(Heuristics):
     def __init__(self, decay_factor=0.95):
         super().__init__()

@@ -1,10 +1,7 @@
 import sys
 
-
 from helpers.dimacs_reader import read_dimacs_file
-from helpers.sat_outcome_converter import from_dict_to_cnf, from_dict_to_matrix, pretty_matrix
-
-
+from helpers.sat_outcome_converter import from_dict_to_matrix, pretty_matrix
 
 
 def simplify_clauses(clauses, literal):
@@ -30,6 +27,8 @@ def find_pure_literals(clauses):
             counts[literal] = counts.get(literal, 0) + 1
     pure_literals = [lit for lit in counts if -lit not in counts]
     return pure_literals
+
+
 def dpll(clauses, assignment={}):
     """
     Basic DPLL Algorithm for SAT solving.
@@ -84,6 +83,8 @@ def dpll(clauses, assignment={}):
     # If assigning True fails, try assigning False
     new_assignment[variable] = False
     return dpll(simplify_clauses(clauses, -variable), new_assignment)
+
+
 def save_output(filepath, satisfiable, assignment, grid_size=9):
     """
     Saves the SAT solving results to an output file and a readable Sudoku format.
@@ -101,7 +102,7 @@ def save_output(filepath, satisfiable, assignment, grid_size=9):
     # If satisfiable, generate the Sudoku matrix and save it
     if satisfiable:
         sudoku_matrix = from_dict_to_matrix(assignment)  # Use helper to create Sudoku grid
-        sudoku_string = pretty_matrix(sudoku_matrix)    # Format the matrix into a string
+        sudoku_string = pretty_matrix(sudoku_matrix)  # Format the matrix into a string
 
         with open(sudoku_file, "w") as sudoku_file:
             sudoku_file.write(sudoku_string)

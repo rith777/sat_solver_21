@@ -3,3 +3,5 @@
 
 examples/*.txt
 examples/*.out
+
+*/**/__pycache__/
