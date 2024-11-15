@@ -84,7 +84,7 @@ def dpll(clauses, assignment={}):
     # If assigning True fails, try assigning False
     new_assignment[variable] = False
     return dpll(simplify_clauses(clauses, -variable), new_assignment)
-def save_output(filepath, satisfiable, assignment):
+def save_output(filepath, satisfiable, assignment, grid_size=9):
     """
     Saves the SAT solving results to an output file and a readable Sudoku format.
     """
