@@ -27,6 +27,8 @@ class Statistics:
         self.learned_counter = 0
         self.decision_counter = 0
         self.implications_counter = 0
+        self.successful_backjumps_counter = 0
+        self.failed_backjumps_counter = 0
 
     def increment_learned_counter(self):
         self.learned_counter += 1
@@ -40,11 +42,19 @@ class Statistics:
     def update_implications_counter(self, new_value):
         self.implications_counter = new_value
 
+    def increment_successful_backjumps_counter(self):
+        self.successful_backjumps_counter += 1
+
+    def increment_failed_backjumps_counter(self):
+        self.failed_backjumps_counter += 1
+
     def __str__(self):
         return f"""
         Learned clauses: {self.learned_counter}
         Amount of decisions: {self.decision_counter}
         Amount of implications: {self.implications_counter}
+        Amount of successful backjumps: {self.successful_backjumps_counter}
+        Amount of failed backjumps: {self.failed_backjumps_counter}
         """
 
 
@@ -240,9 +250,12 @@ class CDCLSatSolver:
 
     def backjump(self):
         if not self.decision_levels:
+            self.statistics.increment_failed_backjumps_counter()
             return Status.FAILED, -1
 
         decision_level = self.decision_levels.pop()
         literal = self.assignment[decision_level]
         del self.assignment[decision_level:]
+
+        self.statistics.increment_successful_backjumps_counter()
         return Status.SUCCESS, -literal
