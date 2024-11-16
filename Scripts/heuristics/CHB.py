@@ -1,5 +1,7 @@
 from collections import defaultdict
+
 from Scripts.heuristics.heuristics import Heuristics
+
 
 class CHBHeuristics(Heuristics):
     def __init__(self, initial_alpha=0.4, decay_rate=1e-6, min_alpha=0.06):
@@ -8,6 +10,7 @@ class CHBHeuristics(Heuristics):
         self.min_alpha = min_alpha
         self.decay_rate = decay_rate
         self.conflict_count = 0
+        self.last_conflict = defaultdict(int)
 
     def initialize_scores(self, clauses):
         """Initialize Q and last_conflict for all variables involved in clauses."""
@@ -41,7 +44,6 @@ class CHBHeuristics(Heuristics):
         unassigned = set(self.scores.keys()) - set(assigned_literals) - set(-literal for literal in assigned_literals)
         best_var = max(unassigned, key=lambda x: self.scores[x], default=None)
         # Print the value of best_var and its type
-        print(f"Decided best_var: {best_var}, Type: {type(best_var)}")  # Debugging output
         if best_var is None:
             return None  # If no variable is available, return None instead of "SAT"
         return int(best_var)  # Ensure the returned value is an integer

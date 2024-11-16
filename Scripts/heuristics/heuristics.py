@@ -5,7 +5,7 @@ from collections import defaultdict
 class Heuristics(ABC):
     def __init__(self):
         self.scores = defaultdict(int)
-        self.last_conflict = defaultdict(int)
+
 
     @abstractmethod
     def initialize_scores(self, clauses):
@@ -20,8 +20,5 @@ class Heuristics(ABC):
         pass
 
     @abstractmethod
-    def update_scores(self, variable, reward):
-        pass
-
     def decide(self, assigned_literals):
         pass

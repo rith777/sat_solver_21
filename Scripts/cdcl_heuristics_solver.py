@@ -1,4 +1,6 @@
+import time
 from collections import namedtuple, defaultdict
+from dataclasses import dataclass
 from enum import Enum, auto
 
 Pair = namedtuple('Pair', ['first', 'second'])
@@ -29,6 +31,10 @@ class Statistics:
         self.implications_counter = 0
         self.successful_backjumps_counter = 0
         self.failed_backjumps_counter = 0
+        self.conflicts_counter = 0
+
+        self.start_time = None
+        self.end_time = None
 
     def increment_learned_counter(self):
         self.learned_counter += 1
@@ -42,20 +48,41 @@ class Statistics:
     def update_implications_counter(self, new_value):
         self.implications_counter = new_value
 
+    def increment_implications_counter(self):
+        self.implications_counter += 1
+
     def increment_successful_backjumps_counter(self):
         self.successful_backjumps_counter += 1
 
     def increment_failed_backjumps_counter(self):
         self.failed_backjumps_counter += 1
 
+    def increment_conflicts_counter(self):
+        self.conflicts_counter += 1
+
+    def start(self):
+        self.start_time = time.time()
+
+    def end(self):
+        self.end_time = time.time()
+
     def __str__(self):
         return f"""
         Learned clauses: {self.learned_counter}
         Amount of decisions: {self.decision_counter}
         Amount of implications: {self.implications_counter}
+        Amount of conflicts: {self.conflicts_counter}
         Amount of successful backjumps: {self.successful_backjumps_counter}
         Amount of failed backjumps: {self.failed_backjumps_counter}
+        Total execution time: {self.end_time - self.start_time}
         """
+
+
+@dataclass(frozen=True)
+class CDCLResult:
+    solution: list[int]
+    status: SATResult
+    statistics: Statistics
 
 
 class CDCLSatSolver:
@@ -72,9 +99,12 @@ class CDCLSatSolver:
         self.clauses_literal_watched = defaultdict(list)
 
     def solve(self):
+        self.statistics.start()
+
         self.unit_propagation()
         if self.clauses == Status.CONFLICT:
-            return SATResult.UNSATISFIABLE
+            self.statistics.end()
+            return CDCLResult(self.assignment, SATResult.UNSATISFIABLE, self.statistics)
 
         self.initialize_watch_list()
         self.heuristics.initialize_scores(self.clauses)
@@ -84,7 +114,9 @@ class CDCLSatSolver:
 
             ###added by rith!!!!
             if variable is None:
-                return SATResult.SATISFIABLE  # No variable to decide, meaning the solution is SAT
+                # No variable to decide, meaning the solution is SAT
+                self.statistics.end()
+                return CDCLResult(self.assignment, SATResult.SATISFIABLE, self.statistics)
 
             self.assign(variable)
             conflict = self.two_watch_propagate(variable)
@@ -106,15 +138,17 @@ class CDCLSatSolver:
                 self.assignment.append(var)
                 conflict = self.two_watch_propagate(var)
 
-        return SATResult.SATISFIABLE
+        self.statistics.end()
+
+        return CDCLResult(self.assignment, SATResult.SATISFIABLE, self.statistics)
 
     def calculate_implications(self):
         return self.statistics.implications_counter + len(self.assignment) - len(self.decision_levels)
 
     def unit_propagation(self):
-        implication_found = True
-        while implication_found:
-            implication_found = False
+        flag = True
+        while flag:
+            flag = False
 
             new_clauses = self.clauses
 
@@ -123,13 +157,15 @@ class CDCLSatSolver:
                     unit = clause[0]
                     status, new_clauses = self.boolean_constraint_propagation(new_clauses, unit)
                     self.assignment.append(unit)
-                    implication_found = True
+                    flag = True
                     if status == Status.CONFLICT:
+                        self.statistics.increment_conflicts_counter()
                         return status
 
                 self.clauses = new_clauses
 
                 if not new_clauses:
+                    self.statistics.increment_conflicts_counter()
                     return Status.CONFLICT
 
         return Status.SUCCESS
@@ -177,25 +213,27 @@ class CDCLSatSolver:
         while len(propagation_queue) != 0:
             variable = propagation_queue.pop()
 
-            for affected_claus_num in reversed(self.literal_watch[-variable]):
-                affected_claus = self.clauses[affected_claus_num]
-                watched_clauses = Pair(self.clauses_literal_watched[affected_claus_num][0],
-                                       self.clauses_literal_watched[affected_claus_num][1])
+            for affected_clause_num in reversed(self.literal_watch[-variable]):
+                affected_clause = self.clauses[affected_clause_num]
+                watched_clauses = Pair(self.clauses_literal_watched[affected_clause_num][0],
+                                       self.clauses_literal_watched[affected_clause_num][1])
 
                 previously_watched_clauses = watched_clauses
-                status, watched_clauses, unit = self.evaluate_clause_status(affected_claus, watched_clauses)
+                status, watched_clauses, unit = self.evaluate_clause_status(affected_clause, watched_clauses)
                 if status == ClauseStatus.UNIT:
                     propagation_queue.append(unit)
                     self.assignment.append(unit)
+                    self.statistics.increment_implications_counter()
                 elif status == ClauseStatus.UNSATISFIED:
-                    return affected_claus
+                    self.statistics.increment_conflicts_counter()
+                    return affected_clause
 
                 for _, value in previously_watched_clauses._asdict().items():
-                    self.literal_watch[value].remove(affected_claus_num)
+                    self.literal_watch[value].remove(affected_clause_num)
 
                 for index, (_, clause_value) in enumerate(watched_clauses._asdict().items()):
-                    self.clauses_literal_watched[affected_claus_num][index] = clause_value
-                    self.literal_watch[clause_value].append(affected_claus_num)
+                    self.clauses_literal_watched[affected_clause_num][index] = clause_value
+                    self.literal_watch[clause_value].append(affected_clause_num)
 
         return -1
 

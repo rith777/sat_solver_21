@@ -20,10 +20,6 @@ class VSIDSHeuristics(Heuristics):
         for literal in self.scores:
             self.scores[literal] *= self.decay_factor
 
-    def update_scores(self, variable, reward):
-        # VSIDS-specific logic to update the scores based on reward
-        self.scores[variable] += reward
-
     def decide(self, assigned_literals):
         max_score, best_var = 0, 0
         assigned_set = set(assigned_literals)

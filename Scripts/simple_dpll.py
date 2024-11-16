@@ -1,7 +1,7 @@
-import sys
+import time
 
-from helpers.dimacs_reader import read_dimacs_file
-from helpers.sat_outcome_converter import from_dict_to_matrix, pretty_matrix
+from Scripts.helpers.dimacs_reader import read_dimacs_file
+from Scripts.helpers.sat_outcome_converter import from_dict_to_matrix, pretty_matrix
 
 
 def simplify_clauses(clauses, literal):
@@ -29,17 +29,25 @@ def find_pure_literals(clauses):
     return pure_literals
 
 
-def dpll(clauses, assignment={}):
+def dpll(clauses, statistics: dict, assignment={}):
     """
     Basic DPLL Algorithm for SAT solving.
     """
+
+    if not statistics['start']:
+        statistics['start'] = time.process_time()
+
+    statistics['recursions'] += 1
     # Base case: All clauses are satisfied
     if not clauses:
-        return True, assignment
+        statistics['end'] = time.time()
+        return True, assignment, statistics
 
     # Base case: A clause is unsatisfiable (empty clause exists)
     if any(len(clause) == 0 for clause in clauses):
-        return False, {}
+        statistics['end'] = time.time()
+        statistics['conflicts'] += 1
+        return False, {}, statistics
 
     # Unit propagation: Assign values based on unit clauses
     for clause in clauses:
@@ -47,17 +55,22 @@ def dpll(clauses, assignment={}):
             unit = clause[0]
             value = unit > 0
             assignment[abs(unit)] = value
+            statistics['implications'] += 1
             # Simplify clauses with the unit literal
             clauses = simplify_clauses(clauses, unit)
-            return dpll(clauses, assignment)
+            statistics['clause_simplifications'] += 1
+            return dpll(clauses, statistics, assignment)
 
     # Pure literal elimination: Assign values to pure literals
     pure_literals = find_pure_literals(clauses)
+    statistics['pure_literals'] += len(pure_literals)
     if pure_literals:
         for pure in pure_literals:
             assignment[abs(pure)] = pure > 0
+            statistics['implications'] += 1
             clauses = simplify_clauses(clauses, pure)
-        return dpll(clauses, assignment)
+
+        return dpll(clauses, statistics, assignment)
 
     # Choose a variable to assign (simple heuristic: first unassigned variable)
     variable = None  # Initialize variable
@@ -65,24 +78,29 @@ def dpll(clauses, assignment={}):
         for literal in clause:
             if abs(literal) not in assignment:
                 variable = abs(literal)
+                statistics['decisions'] += 1
                 break
         if variable is not None:
             break
 
     # If no unassigned variable is found, return
     if variable is None:
-        return False, assignment  # No variable to assign
+        return False, assignment, statistics  # No variable to assign
 
     # Try assigning True to the variable
     new_assignment = assignment.copy()
     new_assignment[variable] = True
-    result, final_assignment = dpll(simplify_clauses(clauses, variable), new_assignment)
+    statistics['decisions'] += 1
+    result, final_assignment = dpll(simplify_clauses(clauses, variable), statistics, new_assignment)
     if result:
-        return True, final_assignment
+        return True, final_assignment, statistics
 
     # If assigning True fails, try assigning False
+    statistics['backtracks'] += 1
+    statistics['decisions'] += 1
     new_assignment[variable] = False
-    return dpll(simplify_clauses(clauses, -variable), new_assignment)
+    statistics['recursions'] += 1
+    return dpll(simplify_clauses(clauses, -variable), statistics, new_assignment)
 
 
 def save_output(filepath, satisfiable, assignment, grid_size=9):
@@ -113,25 +131,41 @@ def save_output(filepath, satisfiable, assignment, grid_size=9):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: python sat_solver.py <rulesfilepath> <puzzlefilepath>")
-        sys.exit(1)
-
-    rules_file_path = sys.argv[1]
-    puzzle_file_path = sys.argv[2]
+    # if len(sys.argv) != 3:
+    #     print("Usage: python sat_solver.py <rulesfilepath> <puzzlefilepath>")
+    #     sys.exit(1)
+    #
+    # rules_file_path = sys.argv[1]
+    # puzzle_file_path = sys.argv[2]
 
     # Load DIMACS files
-    rules_clauses, _ = read_dimacs_file(rules_file_path)
-    puzzle_clauses, _ = read_dimacs_file(puzzle_file_path)
+    rules_clauses, _ = read_dimacs_file('../sudoku_rules/sudoku-rules-9x9.cnf')
+    puzzle_clauses, _ = read_dimacs_file('../examples/sudoku1.cnf')
 
     # Combine rules and puzzle clauses
     combined_clauses = rules_clauses + puzzle_clauses
 
+    statistics = {
+        'implications': 0,
+        'decisions': 0,
+        'backtracks': 0,
+        'recursions': 0,
+        'conflicts': 0,
+        'clause_simplifications': 0,
+        'pure_literals': 0,
+        'start': None
+    }
+
     # Solve the SAT problem
-    satisfiable, assignment = dpll(combined_clauses)
+    start = time.time()
+    satisfiable, assignment, statistics = dpll(clauses=combined_clauses, statistics=statistics, assignment={})
+    end = time.time()
 
     # Save the results and display them
-    save_output(puzzle_file_path, satisfiable, assignment, grid_size=9)
+    save_output('../examples/sudoku1.cnf', satisfiable, assignment, grid_size=9)
     print(f"Result: {'SATISFIABLE' if satisfiable else 'UNSATISFIABLE'}")
     if satisfiable:
         print(f"Satisfying Assignment Size: {len(assignment)}")
+
+        print(statistics)
+        print(statistics['end'] - statistics['start'])

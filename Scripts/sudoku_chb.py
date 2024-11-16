@@ -22,6 +22,6 @@ if __name__ == "__main__":
 
     print("Elapsed time: " + str(end_time - start_time) + " sec")
 
-    print(f'Status: {solution}')
-    if solution == SATResult.SATISFIABLE:
+    print(f'Status: {solution.status}')
+    if solution.status == SATResult.SATISFIABLE:
         print(pretty_matrix(from_list_to_matrix(sat_solver.assignment)))
