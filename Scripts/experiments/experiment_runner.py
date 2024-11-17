@@ -50,7 +50,7 @@ async def solve_sudoku_with_basic_dpll(clauses):
     return await asyncio.to_thread(dpll, clauses, statistics, {})
 
 
-async def cdcl_results_to_dict(result: CDCLResult, prefix):
+def cdcl_results_to_dict(result: CDCLResult, prefix):
     statistics = add_prefix(vars(result.statistics), prefix)
 
     statistics[f'{prefix}_is_solution_valid'] = is_valid_sudoku(from_list_to_matrix(result.solution))
@@ -69,19 +69,28 @@ async def solve_sudoku(unsolved_sudoku):
 
     clauses, total_variables = await sudoku_to_cnf(unsolved_sudoku)
 
+    print(f'VSIDS {unsolved_sudoku}')
     vsids_result = await solve_sudoku_with_vsids(deepcopy(clauses), total_variables)
+    print(f"VSIDS Took {(vsids_result.statistics.end_time - vsids_result.statistics.start_time):0.2f} seconds to solve {unsolved_sudoku}")
 
+
+    print(f'CHB {unsolved_sudoku}')
     chb_result = await solve_sudoku_with_chb(deepcopy(clauses), total_variables)
+    print(f"CHB Took {(chb_result.statistics.end_time - chb_result.statistics.start_time):0.2f} seconds to solve {unsolved_sudoku}")
 
+
+    print(f'DPLL sudoku {unsolved_sudoku}')
     is_satisfied, assignment, statistics = await solve_sudoku_with_basic_dpll(deepcopy(clauses))
+    print(f"DPLL Took {(statistics['end'] - statistics['start']):0.2f} seconds to solve {unsolved_sudoku}")
+
 
     dpll_dict = add_prefix(statistics, DPLL_PREFIX)
     dpll_dict[f'{DPLL_PREFIX}_is_satisfied'] = is_satisfied
     dpll_dict[f'{DPLL_PREFIX}_is_solution_valid'] = is_valid_sudoku(from_dict_to_matrix(assignment))
 
-    vsids_dict = await cdcl_results_to_dict(vsids_result, prefix=VSIDS_PREFIX)
+    vsids_dict = cdcl_results_to_dict(vsids_result, prefix=VSIDS_PREFIX)
 
-    chb_dict = await cdcl_results_to_dict(chb_result, prefix=CHB_PREFIX)
+    chb_dict = cdcl_results_to_dict(chb_result, prefix=CHB_PREFIX)
 
     final_dict = ChainMap(vsids_dict, chb_dict, dpll_dict)
     final_dict[UNSOLVED_SUDOKU_PREFIX] = unsolved_sudoku
@@ -89,6 +98,7 @@ async def solve_sudoku(unsolved_sudoku):
     final_dict[f'{UNSOLVED_SUDOKU_PREFIX}_number_of_unknown_positions'] = unsolved_sudoku.count('.')
     final_dict[f'{UNSOLVED_SUDOKU_PREFIX}_total_of_characters'] = len(unsolved_sudoku)
 
+    print(f'Finished sudoku {unsolved_sudoku}')
     return dict(final_dict)
 
 
@@ -106,6 +116,7 @@ async def main(*args):
 
     sorted_data = dict(sorted(data.items(), key=lambda x: x[0].lower()))
 
+    print('Storing results')
     async with aiofiles.open('output.csv', 'w') as file:
         writer = AsyncWriter(file, )
         await writer.writerow(sorted_data.keys())
@@ -124,7 +135,7 @@ DPLL_PREFIX = 'basic_DPLL'
 UNSOLVED_SUDOKU_PREFIX = 'unsolved_sudoku'
 
 OUTPUT_PATH = 'experiment_result.csv'
-SUDOKU_DATASET_FILE_PATH = '../../test_sets/damnhard.sdk.txt'
+SUDOKU_DATASET_FILE_PATH = '../../test_sets/all_9x9.txt'
 
 if __name__ == "__main__":
     unsolved_sudokus = get_unsolved_sudokus(SUDOKU_DATASET_FILE_PATH)
