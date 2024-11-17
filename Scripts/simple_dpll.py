@@ -1,3 +1,4 @@
+import sys
 import time
 
 from Scripts.helpers.dimacs_reader import read_dimacs_file
@@ -11,9 +12,10 @@ def simplify_clauses(clauses, literal):
     new_clauses = []
     for clause in clauses:
         if literal in clause:
-            continue  # Clause is satisfied
-        new_clause = [lit for lit in clause if lit != -literal]
-        new_clauses.append(new_clause)
+            continue  # Clause is satisfied, skip it
+        new_clause = [x for x in clause if x != -literal]  # Remove negated literal
+        if new_clause:  # Only add non-empty clauses
+            new_clauses.append(new_clause)
     return new_clauses
 
 
@@ -91,7 +93,7 @@ def dpll(clauses, statistics: dict, assignment={}):
     new_assignment = assignment.copy()
     new_assignment[variable] = True
     statistics['decisions'] += 1
-    result, final_assignment = dpll(simplify_clauses(clauses, variable), statistics, new_assignment)
+    result, final_assignment, statistics= dpll(simplify_clauses(clauses, variable), statistics, new_assignment)
     if result:
         return True, final_assignment, statistics
 
@@ -131,16 +133,16 @@ def save_output(filepath, satisfiable, assignment, grid_size=9):
 
 
 if __name__ == "__main__":
-    # if len(sys.argv) != 3:
-    #     print("Usage: python sat_solver.py <rulesfilepath> <puzzlefilepath>")
-    #     sys.exit(1)
-    #
-    # rules_file_path = sys.argv[1]
-    # puzzle_file_path = sys.argv[2]
+    if len(sys.argv) != 3:
+        print("Usage: python sat_solver.py <rulesfilepath> <puzzlefilepath>")
+        sys.exit(1)
+
+    rules_file_path = sys.argv[1]
+    puzzle_file_path = sys.argv[2]
 
     # Load DIMACS files
-    rules_clauses, _ = read_dimacs_file('../sudoku_rules/sudoku-rules-9x9.cnf')
-    puzzle_clauses, _ = read_dimacs_file('../examples/sudoku1.cnf')
+    rules_clauses, _ = read_dimacs_file(rules_file_path)
+    puzzle_clauses, _ = read_dimacs_file(puzzle_file_path)
 
     # Combine rules and puzzle clauses
     combined_clauses = rules_clauses + puzzle_clauses
