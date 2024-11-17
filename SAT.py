@@ -4,6 +4,7 @@ import pprint
 import sys
 
 from Scripts.cdcl_heuristics_solver import CDCLSatSolver, SATResult
+from Scripts.experiments.sudoku_validator import is_valid_sudoku
 from Scripts.helpers.dimacs_reader import read_dimacs_file
 from Scripts.helpers.sat_outcome_converter import from_dict_to_matrix, pretty_matrix, from_list_to_matrix
 from Scripts.heuristics.CHB import CHBHeuristics
@@ -42,6 +43,7 @@ def solve_with_dpll(clauses):
         print("=============================================")
         print(pretty_matrix(sudoku_matrix))
         print("=============================================")
+        print(f"is sudoku matrix valid? {is_valid_sudoku(sudoku_matrix)}")
     else:
         print("UNSATISFIED")
 
@@ -51,15 +53,18 @@ def solve_with_cdcl(clauses, total_variables, heuristics):
 
     print(f'Status: {results.status}')
 
-    print("Statistics :")
-    print("=============================================")
-    print(results.statistics)
-    print("=============================================")
-
-    # print("Elapsed time: " + str(end_time - start_time) + " sec")
-
     if results.status == SATResult.SATISFIABLE:
-        print(pretty_matrix(from_list_to_matrix(results.solution)))
+        print("Statistics :")
+        print("=============================================")
+        print(results.statistics)
+        print("=============================================")
+
+        sudoku_matrix = from_list_to_matrix(results.solution)
+        print("Solution:")
+        print("=============================================")
+        print(pretty_matrix(sudoku_matrix))
+        print("=============================================")
+        print(f"is sudoku matrix valid? {is_valid_sudoku(sudoku_matrix)}")
 
 
 if __name__ == '__main__':
