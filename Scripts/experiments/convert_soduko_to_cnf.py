@@ -1,5 +1,7 @@
 import math as m
 
+from Scripts.helpers.dimacs_reader import read_dimacs_file
+
 SUDOKU_RULES = '../../sudoku_rules/sudoku-rules-9x9.cnf'
 
 
@@ -36,28 +38,7 @@ def sudoku_input_to_dimacs(sudoku_str):
     return clauses
 
 
-def merge_rules(input_clues_str, constraints_file_path):
-    """
-    Merges the DIMACS CNF format strings of input clues and constraints,
-    and writes the merged output to a new file.
+def merge_rules(clues, constraints_file_path):
+    rules, var_count = read_dimacs_file(constraints_file_path)
 
-    :param input_clues_str: DIMACS string representing the input clues only
-    :param constraints_file_path: Path to the constraints DIMACS file
-    :param output_file_path: Path where the combined DIMACS file will be written
-    """
-
-    # Read the constraints from the file
-    with open(constraints_file_path, 'r') as file:
-        rules = file.read().splitlines()
-
-        header = rules[0]
-        _, _, total_variables, _ = header.split()
-        rules.remove(header)
-
-        rule_clauses = [rule.replace(' 0', '') for rule in rules]
-        rules_as_int = [
-            list(map(int, clause.strip().replace(' 0', '').split()))[:-1]
-            for clause in rule_clauses
-        ]
-
-        return (rules_as_int + input_clues_str), int(total_variables)
+    return (clues + rules), var_count
