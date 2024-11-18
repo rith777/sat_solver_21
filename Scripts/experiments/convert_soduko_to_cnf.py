@@ -11,6 +11,11 @@ def sudoku_string_to_cnf_clauses(sudoku):
     return merge_rules(sudoku_cnf, '../../sudoku_rules/sudoku-rules-9x9.cnf')
 
 
+def sudoku_string_to_cnf_clauses(sudoku):
+    sudoku_cnf = sudoku_input_to_dimacs(sudoku)
+
+    return merge_rules(sudoku_cnf, '../../sudoku_rules/sudoku-rules-9x9.cnf')
+
 def sudoku_input_to_dimacs(sudoku_str):
     """
     Converts a Sudoku string with given clues into DIMACS CNF format,

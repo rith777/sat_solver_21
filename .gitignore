@@ -5,4 +5,4 @@ examples/*.txt
 examples/*.out
 
 */**/__pycache__/
-*/**/output.csv
+Scripts/experiments/*.csv

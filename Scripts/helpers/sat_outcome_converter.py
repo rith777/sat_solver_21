@@ -1,3 +1,6 @@
+UNKNOWN_NUMBER = 0
+
+
 def from_list_to_matrix(data: list):
     sudoku = _empty_matrix()
 
@@ -7,7 +10,7 @@ def from_list_to_matrix(data: list):
 
             row_index, column_index = int(row) - 1, int(column) - 1
 
-            if sudoku[row_index][column_index] == 0:
+            if sudoku[row_index][column_index] == UNKNOWN_NUMBER:
                 sudoku[row_index][column_index] = int(value)
 
     return sudoku
@@ -16,10 +19,14 @@ def from_list_to_matrix(data: list):
 def from_dict_to_matrix(data: dict):
     sudoku = _empty_matrix()
 
-    for key, value in data.items():
-        if value:
-            row, column, value = list(str(key).strip())
-            sudoku[int(row) - 1][int(column) - 1] = int(value)
+    solution = {key for key, value in data.items() if value}
+
+    for item in solution:
+        row, column, value = list(str(item).strip())
+        row_index, column_index = int(row) - 1, int(column) - 1
+
+        if sudoku[row_index][column_index] == UNKNOWN_NUMBER:
+            sudoku[row_index][column_index] = int(value)
 
     return sudoku
 

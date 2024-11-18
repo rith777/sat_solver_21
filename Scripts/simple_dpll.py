@@ -36,18 +36,13 @@ def dpll(clauses, statistics: dict, assignment={}):
     Basic DPLL Algorithm for SAT solving.
     """
 
-    if not statistics['start']:
-        statistics['start'] = time.process_time()
-
     statistics['recursions'] += 1
     # Base case: All clauses are satisfied
     if not clauses:
-        statistics['end'] = time.time()
         return True, assignment, statistics
 
     # Base case: A clause is unsatisfiable (empty clause exists)
     if any(len(clause) == 0 for clause in clauses):
-        statistics['end'] = time.time()
         statistics['conflicts'] += 1
         return False, {}, statistics
 
@@ -93,7 +88,7 @@ def dpll(clauses, statistics: dict, assignment={}):
     new_assignment = assignment.copy()
     new_assignment[variable] = True
     statistics['decisions'] += 1
-    result, final_assignment, statistics= dpll(simplify_clauses(clauses, variable), statistics, new_assignment)
+    result, final_assignment, statistics = dpll(simplify_clauses(clauses, variable), statistics, new_assignment)
     if result:
         return True, final_assignment, statistics
 
@@ -170,4 +165,3 @@ if __name__ == "__main__":
         print(f"Satisfying Assignment Size: {len(assignment)}")
 
         print(statistics)
-        print(statistics['end'] - statistics['start'])

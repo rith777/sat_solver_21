@@ -1,4 +1,3 @@
-import time
 from collections import namedtuple, defaultdict
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -33,9 +32,6 @@ class Statistics:
         self.failed_backjumps_counter = 0
         self.conflicts_counter = 0
 
-        self.start_time = None
-        self.end_time = None
-
     def increment_learned_counter(self):
         self.learned_counter += 1
 
@@ -60,12 +56,6 @@ class Statistics:
     def increment_conflicts_counter(self):
         self.conflicts_counter += 1
 
-    def start(self):
-        self.start_time = time.time()
-
-    def end(self):
-        self.end_time = time.time()
-
     def __str__(self):
         return f"""
         Learned clauses: {self.learned_counter}
@@ -74,7 +64,6 @@ class Statistics:
         Amount of conflicts: {self.conflicts_counter}
         Amount of successful backjumps: {self.successful_backjumps_counter}
         Amount of failed backjumps: {self.failed_backjumps_counter}
-        Total execution time: {self.end_time - self.start_time}
         """
 
 
@@ -99,11 +88,9 @@ class CDCLSatSolver:
         self.clauses_literal_watched = defaultdict(list)
 
     def solve(self):
-        self.statistics.start()
 
         self.unit_propagation()
         if self.clauses == Status.CONFLICT:
-            self.statistics.end()
             return CDCLResult(self.assignment, SATResult.UNSATISFIABLE, self.statistics)
 
         self.initialize_watch_list()
@@ -115,7 +102,6 @@ class CDCLSatSolver:
             ###added by rith!!!!
             if variable is None:
                 # No variable to decide, meaning the solution is SAT
-                self.statistics.end()
                 return CDCLResult(self.assignment, SATResult.SATISFIABLE, self.statistics)
 
             self.assign(variable)
@@ -137,8 +123,6 @@ class CDCLSatSolver:
                     return SATResult.UNSATISFIABLE
                 self.assignment.append(var)
                 conflict = self.two_watch_propagate(var)
-
-        self.statistics.end()
 
         return CDCLResult(self.assignment, SATResult.SATISFIABLE, self.statistics)
 
