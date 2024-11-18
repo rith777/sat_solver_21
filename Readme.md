@@ -1,4 +1,4 @@
-# Sat solver
+ch# Sat solver
 
 This repository contains 2 different SAT solvers, a basic DPLL and a CDCL.
 

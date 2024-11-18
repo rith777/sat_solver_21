@@ -6,16 +6,14 @@ from Scripts.helpers.sat_outcome_converter import from_dict_to_matrix, pretty_ma
 
 
 def simplify_clauses(clauses, literal):
-    """
-    Simplifies the clause list by applying a literal's assignment.
-    """
     new_clauses = []
     for clause in clauses:
         if literal in clause:
             continue  # Clause is satisfied, skip it
         new_clause = [x for x in clause if x != -literal]  # Remove negated literal
-        if new_clause:  # Only add non-empty clauses
-            new_clauses.append(new_clause)
+        if not new_clause:  # If a clause becomes empty, a conflict has occurred
+            return False
+        new_clauses.append(new_clause)
     return new_clauses
 
 
@@ -46,7 +44,6 @@ def dpll(clauses, statistics: dict, assignment={}):
         statistics['conflicts'] += 1
         return False, {}, statistics
 
-    # Unit propagation: Assign values based on unit clauses
     for clause in clauses:
         if len(clause) == 1:  # Unit clause found
             unit = clause[0]
@@ -54,18 +51,26 @@ def dpll(clauses, statistics: dict, assignment={}):
             assignment[abs(unit)] = value
             statistics['implications'] += 1
             # Simplify clauses with the unit literal
-            clauses = simplify_clauses(clauses, unit)
+            result = simplify_clauses(clauses, unit)
+            if result is False:  # Conflict occurred after simplification
+                statistics['conflicts'] += 1
+                return False, {}, statistics
+            clauses = result
             statistics['clause_simplifications'] += 1
             return dpll(clauses, statistics, assignment)
 
-    # Pure literal elimination: Assign values to pure literals
+        # Pure literal elimination: Assign values to pure literals
     pure_literals = find_pure_literals(clauses)
     statistics['pure_literals'] += len(pure_literals)
     if pure_literals:
         for pure in pure_literals:
             assignment[abs(pure)] = pure > 0
             statistics['implications'] += 1
-            clauses = simplify_clauses(clauses, pure)
+            result = simplify_clauses(clauses, pure)
+            if result is False:  # Conflict occurred after pure literal elimination
+                statistics['conflicts'] += 1
+                return False, {}, statistics
+            clauses = result
 
         return dpll(clauses, statistics, assignment)
 

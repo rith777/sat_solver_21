@@ -67,6 +67,7 @@ def solve_with_cdcl(clauses, total_variables, heuristics):
         print(f"is sudoku matrix valid? {is_valid_sudoku(sudoku_matrix)}")
 
 
+
 if __name__ == '__main__':
     if len(sys.argv) != 3:
         print("Usage: SAT -Sn inputfile")
@@ -82,14 +83,26 @@ if __name__ == '__main__':
 
     clauses, num_var = read_dimacs_file(file_path)
 
-    strategy_number = int(strategy[2:])
-    if strategy_number == DPLL_STRATEGY:
-        print('Solving sudoky with basic DPLL...\n\n')
-        solve_with_dpll(clauses)
-    if strategy_number == CDCL_CHB_STRATEGY:
-        print('Solving sudoky with CDCL using CHB heuristics...\n\n')
-        solve_with_cdcl(clauses, num_var, CHBHeuristics())
+    # Assuming rules file is passed as another argument
+    # Load the rules file (you may need to modify this to handle a separate rules file)
+    rules_file_path = "C:\github\sat_solver\sat_solver_21\sudoku_rules\sudoku-rules-9x9.cnf"  # Specify the correct path to the rules file
+    rules_clauses, num_var_rules = read_dimacs_file(rules_file_path)
 
-    if strategy_number == CDCL_VISIDS_STRATEGY:
-        print('Solving sudoky with CDCL using VSIDS heuristics...\n\n')
-        solve_with_cdcl(clauses, num_var, VSIDSHeuristics())
+    # Combine the clauses from the rules file and the puzzle file
+    combined_clauses = rules_clauses + clauses  # Combine both sets of clauses
+
+    strategy_number = int(strategy[2:])
+
+    if strategy_number == DPLL_STRATEGY:
+        print('Solving sudoku with basic DPLL...\n\n')
+        solve_with_dpll(combined_clauses)
+
+    elif strategy_number == CDCL_CHB_STRATEGY:
+        print('Solving sudoku with CDCL using CHB heuristics...\n\n')
+        solve_with_cdcl(combined_clauses, num_var, CHBHeuristics())
+
+    elif strategy_number == CDCL_VISIDS_STRATEGY:
+        print('Solving sudoku with CDCL using VSIDS heuristics...\n\n')
+        solve_with_cdcl(combined_clauses, num_var, VSIDSHeuristics())
+
+
