@@ -1,12 +1,8 @@
-import asyncio
-import os
+import csv
 import time
-from asyncio import Semaphore
 from collections import defaultdict, ChainMap, namedtuple
 from copy import deepcopy
-
-import aiofiles
-from aiocsv import AsyncWriter
+from multiprocessing import Pool
 
 from Scripts.cdcl_heuristics_solver import CDCLSatSolver, CDCLResult, SATResult
 from Scripts.experiments.convert_soduko_to_cnf import sudoku_input_to_dimacs
@@ -24,27 +20,27 @@ DPLLResultWrapper = namedtuple('DPLLResultWrapper',
                                ['is_satisfiable', 'assignment', 'statistics', 'elapsed_time'])
 
 
-async def solve_sudoku_with_vsids(clauses, total_variables, unsolved_sudoku):
+def solve_sudoku_with_vsids(clauses, total_variables, unsolved_sudoku):
     print(f'CDCL {VSIDS_PREFIX} - {unsolved_sudoku}')
-    return await solve_with_cdcl(clauses, total_variables, VSIDSHeuristics())
+    return solve_with_cdcl(clauses, total_variables, VSIDSHeuristics())
 
 
-async def solve_sudoku_with_chb(clauses, total_variables, unsolved_sudoku):
+def solve_sudoku_with_chb(clauses, total_variables, unsolved_sudoku):
     print(f'CDCL {CHB_PREFIX} - {unsolved_sudoku}')
-    return await solve_with_cdcl(clauses, total_variables, CHBHeuristics())
+    return solve_with_cdcl(clauses, total_variables, CHBHeuristics())
 
 
-async def solve_with_cdcl(clauses, total_variables, heuristics):
+def solve_with_cdcl(clauses, total_variables, heuristics):
     sat_solver = CDCLSatSolver(clauses, total_variables, heuristics)
 
     start_time = time.process_time()
-    result = await asyncio.to_thread(sat_solver.solve)
+    result = sat_solver.solve()
     end_time = time.process_time()
 
     return CDCLResultWrapper(result, end_time - start_time)
 
 
-async def solve_sudoku_with_basic_dpll(clauses, unsolved_sudoku):
+def solve_sudoku_with_basic_dpll(clauses, unsolved_sudoku):
     print(f'{DPLL_PREFIX} - {unsolved_sudoku}')
     statistics = {
         'implications': 0,
@@ -57,7 +53,7 @@ async def solve_sudoku_with_basic_dpll(clauses, unsolved_sudoku):
     }
 
     start_time = time.process_time()
-    is_satisfiable, assignment, statistics = await asyncio.to_thread(dpll, clauses, statistics, {})
+    is_satisfiable, assignment, statistics = dpll(clauses, statistics, {})
     end_time = time.process_time()
 
     return DPLLResultWrapper(is_satisfiable, assignment, statistics, end_time - start_time)
@@ -77,24 +73,20 @@ def add_prefix(dictionary: dict, prefix: str):
     return {prefix + '_' + key: value for key, value in dictionary.items()}
 
 
-async def solve_sudoku(unsolved_sudoku):
+def solve_sudoku(unsolved_sudoku):
+    unsolved_sudoku = unsolved_sudoku.strip()
     print(f'solving sudoku {unsolved_sudoku}')
 
     clauses = sudoku_input_to_dimacs(unsolved_sudoku) + sudoku_rules
 
-    results = await asyncio.gather(
-        solve_sudoku_with_vsids(deepcopy(clauses), total_variables, unsolved_sudoku),
-        solve_sudoku_with_chb(deepcopy(clauses), total_variables, unsolved_sudoku),
-        solve_sudoku_with_basic_dpll(deepcopy(clauses), unsolved_sudoku)
-    )
+    dpll_result: DPLLResultWrapper = solve_sudoku_with_basic_dpll(deepcopy(clauses), unsolved_sudoku)
 
-    vsids_result = results[0]
+    vsids_result = solve_sudoku_with_vsids(deepcopy(clauses), total_variables, unsolved_sudoku)
     vsids_dict = cdcl_results_to_dict(vsids_result.result, elapsed_time=vsids_result.elapsed_time, prefix=VSIDS_PREFIX)
 
-    chb_result = results[1]
+    chb_result = solve_sudoku_with_chb(deepcopy(clauses), total_variables, unsolved_sudoku)
     chb_dict = cdcl_results_to_dict(chb_result.result, elapsed_time=chb_result.elapsed_time, prefix=CHB_PREFIX)
 
-    dpll_result: DPLLResultWrapper = results[2]
     dpll_dict = add_prefix(dpll_result.statistics, DPLL_PREFIX)
     dpll_dict[f'{DPLL_PREFIX}_is_satisfied'] = dpll_result.is_satisfiable
     dpll_dict[f'{DPLL_PREFIX}_is_solution_valid'] = is_valid_sudoku(from_dict_to_matrix(dpll_result.assignment))
@@ -118,32 +110,27 @@ def merge(data: list[dict]):
     }
 
 
-async def solve_sudoku_with_semaphore(unsolved_sudoku):
-    async with semaphore:
-        return await solve_sudoku(unsolved_sudoku.strip())
+def main(args):
+    # with semaphore:
+    with Pool() as pool:
+        results = pool.map(solve_sudoku, args)
 
-
-async def main(*args):
-    async with semaphore:
-        responses = await asyncio.gather(
-            *(solve_sudoku(unsolved_sudoku.strip()) for unsolved_sudoku in args))
-        data = merge(responses)
+        data = merge(results)
 
         sorted_data = dict(sorted(data.items(), key=lambda x: x[0].lower()))
 
         print('Storing results')
-        async with aiofiles.open(OUTPUT_PATH, 'w') as file:
-            writer = AsyncWriter(file, )
-            await writer.writerow(sorted_data.keys())
-            await writer.writerows(zip(*sorted_data.values()))
+        with open(OUTPUT_PATH, 'w', newline='') as file:
+            writer = csv.DictWriter(file, sorted_data.keys())
+            writer.writeheader()
+            rows = zip(*sorted_data.values())
+            writer.writerows(dict(zip(sorted_data.keys(), row)) for row in rows)
 
 
 def get_unsolved_sudokus(file_path):
     with open(file_path, 'r') as file:
         return set(file.readlines())
 
-
-semaphore = Semaphore(os.cpu_count())
 
 VSIDS_PREFIX = 'VSIDS'
 CHB_PREFIX = 'CHB'
@@ -158,8 +145,8 @@ SUDOKU_RULES = '../../sudoku_rules/sudoku-rules-9x9.cnf'
 sudoku_rules, total_variables = read_dimacs_file(SUDOKU_RULES)
 
 if __name__ == "__main__":
-    unsolved_sudokus = get_unsolved_sudokus(SUDOKU_DATASET_FILE_PATH)
+    unsolved_sudokus = list(get_unsolved_sudokus(SUDOKU_DATASET_FILE_PATH))
     start = time.perf_counter()
-    asyncio.run(main(*unsolved_sudokus))
+    main(unsolved_sudokus)
     end = time.perf_counter() - start
     print(f"Program finished in {end:0.2f} seconds to solve {len(unsolved_sudokus)} sudokus.")
