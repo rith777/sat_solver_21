@@ -38,9 +38,6 @@ class Statistics:
     def increment_decision_counter(self):
         self.decision_counter += 1
 
-    def increment_implicit_counter(self):
-        self.implications_counter += 1
-
     def update_implications_counter(self, new_value):
         self.implications_counter = new_value
 
@@ -117,12 +114,12 @@ class CDCLSatSolver:
 
                 self.statistics.update_implications_counter(self.calculate_implications())
 
-                jump_status, var = self.backjump()
+                jump_status, variable = self.backjump()
 
                 if jump_status == Status.FAILED:
                     return SATResult.UNSATISFIABLE
-                self.assignment.append(var)
-                conflict = self.two_watch_propagate(var)
+                self.assignment.append(variable)
+                conflict = self.two_watch_propagate(variable)
 
         return CDCLResult(self.assignment, SATResult.SATISFIABLE, self.statistics)
 

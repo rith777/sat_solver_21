@@ -135,7 +135,6 @@ def get_unsolved_sudokus(file_path):
 VSIDS_PREFIX = 'VSIDS'
 CHB_PREFIX = 'CHB'
 DPLL_PREFIX = 'basic_DPLL'
-
 UNSOLVED_SUDOKU_PREFIX = 'unsolved_sudoku'
 
 OUTPUT_PATH = 'experiment_result.csv'
