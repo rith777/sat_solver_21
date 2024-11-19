@@ -88,8 +88,6 @@ outcome. This can be useful for both data analysis and for bug analysis.
 #### CDCL
 
 - **backjumps**: Counts how many back jumps were performed. Backjumps (equivalent to backtrack) took place
-- **clause simplification**: Counts how many times clauses were simplified. Clause simplification reduces the clause
-  sice and remove redundancies.
 - **conflicts**: It counts how many inconsistencies were found.
 - **decisions**: Counts the explicit choices made by the SAT solver (eg.: explicitly assign *True* or *False* to literal
   111).
