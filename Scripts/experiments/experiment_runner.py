@@ -191,7 +191,7 @@ DPLL_PREFIX = 'basic_DPLL'
 UNSOLVED_SUDOKU_PREFIX = 'unsolved_sudoku'
 
 OUTPUT_PATH = 'experiment_result.csv'
-SUDOKU_DATASET_FILE_PATH = '../../test_sets/16x16.txt'
+SUDOKU_DATASET_FILE_PATH = '../../test_sets/all_9x9.txt'
 
 matrix_length, rule_file_path = load_sudoku_setup_based_on(SudokuType.SUDOKU_16_BY_16)
 sudoku_rules, total_variables = read_dimacs_file(rule_file_path)
