@@ -12,9 +12,10 @@ def simplify_clauses(clauses, literal):
             continue  # Clause is satisfied, skip it
         new_clause = [x for x in clause if x != -literal]  # Remove negated literal
         if not new_clause:  # If a clause becomes empty, a conflict has occurred
-            return False
+            return []  # Return an empty list instead of False
         new_clauses.append(new_clause)
     return new_clauses
+
 
 
 def find_pure_literals(clauses):
