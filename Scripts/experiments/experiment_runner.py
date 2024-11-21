@@ -137,7 +137,7 @@ CHB_PREFIX = 'CHB'
 DPLL_PREFIX = 'basic_DPLL'
 UNSOLVED_SUDOKU_PREFIX = 'unsolved_sudoku'
 
-OUTPUT_PATH = 'experiment_result_9x9_fixed.csv'
+OUTPUT_PATH = 'experiment_result_9x9_final_with_history.csv'
 SUDOKU_DATASET_FILE_PATH = '../../test_sets/all_9x9.txt'
 
 SUDOKU_RULES = '../../sudoku_rules/sudoku-rules-9x9.cnf'

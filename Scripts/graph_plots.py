@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
-file_path = "experiments/experiment_result_9x9_fixed.csv"
+file_path = "experiments/experiment_result_9x9_final.csv"
 
 data = pd.read_csv(file_path)
 colorblind_palette = sns.color_palette("colorblind")
@@ -146,7 +146,7 @@ plt.legend()
 plt.show()
 
 
-data_chb = pd.read_csv('experiments/cbh_history.csv')
+data_chb = pd.read_csv('experiments/chb_history.csv')
 
 # Create a DataFrame
 df_chb = pd.DataFrame(data_chb)

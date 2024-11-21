@@ -2,6 +2,8 @@ from collections import namedtuple, defaultdict
 from dataclasses import dataclass
 from enum import Enum, auto
 
+from Scripts.experiments.History import HistoryManager
+
 Pair = namedtuple('Pair', ['first', 'second'])
 
 
@@ -84,6 +86,8 @@ class CDCLSatSolver:
         self.literal_watch = defaultdict(list)
         self.clauses_literal_watched = defaultdict(list)
 
+        self.historyManager = HistoryManager()
+
     def solve(self):
 
         self.unit_propagation()
@@ -140,14 +144,13 @@ class CDCLSatSolver:
                     self.assignment.append(unit)
                     flag = True
                     if status == Status.CONFLICT:
-                        self.statistics.increment_conflicts_counter()
                         self.on_conflict_found()
                         return status
 
                 self.clauses = new_clauses
 
                 if not new_clauses:
-                    self.statistics.increment_conflicts_counter()
+                    self.on_conflict_found()
                     return Status.CONFLICT
 
         return Status.SUCCESS
@@ -163,6 +166,10 @@ class CDCLSatSolver:
                 if not clause:
                     return Status.CONFLICT, []
         return Status.SUCCESS, new_clauses
+
+    def on_conflict_found(self):
+        self.statistics.increment_conflicts_counter()
+        self.historyManager.add_conflict(self.statistics.conflicts_counter)
 
     def initialize_watch_list(self):
         for clause_index, clause in enumerate(self.clauses):
@@ -207,7 +214,7 @@ class CDCLSatSolver:
                     self.assignment.append(unit)
                     self.statistics.increment_implications_counter()
                 elif status == ClauseStatus.UNSATISFIED:
-                    self.statistics.increment_conflicts_counter()
+                    self.on_conflict_found()
                     return affected_clause
 
                 for _, value in previously_watched_clauses._asdict().items():
@@ -278,4 +285,5 @@ class CDCLSatSolver:
         del self.assignment[decision_level:]
 
         self.statistics.increment_successful_backjumps_counter()
+
         return Status.SUCCESS, -literal
