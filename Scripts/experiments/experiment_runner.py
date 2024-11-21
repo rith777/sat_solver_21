@@ -25,7 +25,7 @@ CDCLHistory = namedtuple('CDCLHistory', ['unsolved_sudoku', 'chb', 'vsids'])
 
 def solve_sudoku_with_vsids(clauses, total_variables, unsolved_sudoku):
     print(f'CDCL {VSIDS_PREFIX} - {unsolved_sudoku}')
-    return solve_with_cdcl(clauses, total_variables, VSIDSHeuristics(0.85))
+    return solve_with_cdcl(clauses, total_variables, VSIDSHeuristics())
 
 
 def solve_sudoku_with_chb(clauses, total_variables, unsolved_sudoku):

@@ -34,7 +34,11 @@ def solve_with_dpll(clauses):
 
     if is_satisfied:
         print("SATISFIED")
+        start_time = time.perf_counter()
         sudoku_matrix = from_dict_to_matrix(assignment)
+        end_time = time.perf_counter()
+
+        print(f'Elapsed time {end_time - start_time}')
 
         # Use helper to create Sudoku grid
 
@@ -55,7 +59,11 @@ def solve_with_dpll(clauses):
 
 
 def solve_with_cdcl(clauses, total_variables, heuristics):
+    start_time = time.perf_counter()
     results = CDCLSatSolver(clauses, total_variables, heuristics).solve()
+    end_time = time.perf_counter()
+
+    print(f'Elapsed time {end_time - start_time}')
 
     print(f'Status: {results.status}')
 
@@ -111,7 +119,7 @@ if __name__ == '__main__':
 
     elif strategy_number == CDCL_VISIDS_STRATEGY:
         print('Solving sudoku with CDCL using VSIDS heuristics...\n\n')
-        is_satisfiable, solution = (clauses, num_var, VSIDSHeuristics())
+        is_satisfiable, solution = solve_with_cdcl(clauses, num_var, VSIDSHeuristics())
 
     if is_satisfiable:
         save_output(output_file=file_path + '.out', data=solution)
