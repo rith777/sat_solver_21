@@ -143,6 +143,7 @@ SUDOKU_DATASET_FILE_PATH = '../../test_sets/all_9x9.txt'
 SUDOKU_RULES = '../../sudoku_rules/sudoku-rules-9x9.cnf'
 sudoku_rules, total_variables = read_dimacs_file(SUDOKU_RULES)
 
+
 if __name__ == "__main__":
     unsolved_sudokus = list(get_unsolved_sudokus(SUDOKU_DATASET_FILE_PATH))
     start = time.perf_counter()
