@@ -6,8 +6,7 @@ import sys
 from Scripts.cdcl_heuristics_solver import CDCLSatSolver, SATResult
 from Scripts.experiments.sudoku_validator import is_valid_sudoku
 from Scripts.helpers.dimacs_reader import read_dimacs_file
-from Scripts.helpers.sat_outcome_converter import from_dict_to_matrix, pretty_matrix, from_list_to_matrix, \
-    from_dict_to_cnf
+from Scripts.helpers.sat_outcome_converter import from_dict_to_matrix, pretty_matrix, from_list_to_matrix
 from Scripts.heuristics.CHB import CHBHeuristics
 from Scripts.heuristics.VSIDS import VSIDSHeuristics
 from Scripts.simple_dpll import dpll
@@ -33,9 +32,7 @@ def solve_with_dpll(clauses):
 
     if is_satisfied:
         print("SATISFIED")
-        sudoku_matrix = from_dict_to_matrix(assignment)
-
-        # Use helper to create Sudoku grid
+        sudoku_matrix = from_dict_to_matrix(assignment)  # Use helper to create Sudoku grid
 
         print("Statistics:")
         print("=============================================")
@@ -50,17 +47,13 @@ def solve_with_dpll(clauses):
     else:
         print("UNSATISFIED")
 
-    return is_satisfied, from_dict_to_cnf(assignment)
-
 
 def solve_with_cdcl(clauses, total_variables, heuristics):
     results = CDCLSatSolver(clauses, total_variables, heuristics).solve()
 
     print(f'Status: {results.status}')
 
-    is_satisfiable = results.status == SATResult.SATISFIABLE
-
-    if is_satisfiable:
+    if results.status == SATResult.SATISFIABLE:
         print("Statistics :")
         print("=============================================")
         print(results.statistics)
@@ -72,13 +65,6 @@ def solve_with_cdcl(clauses, total_variables, heuristics):
         print(pretty_matrix(sudoku_matrix))
         print("=============================================")
         print(f"is sudoku matrix valid? {is_valid_sudoku(sudoku_matrix)}")
-
-    return is_satisfiable, map(str, results.solution)
-
-
-def save_output(output_file, data: list[int]):
-    with open(output_file, 'w') as output:
-        output.write(" 0 \n".join(data))
 
 
 if __name__ == '__main__':
@@ -98,20 +84,14 @@ if __name__ == '__main__':
 
     strategy_number = int(strategy[2:])
 
-    is_satisfiable = False
-    solution = None
-
     if strategy_number == DPLL_STRATEGY:
         print('Solving sudoku with basic DPLL...\n\n')
-        is_satisfiable, solution = solve_with_dpll(clauses)
+        solve_with_dpll(clauses)
 
     elif strategy_number == CDCL_CHB_STRATEGY:
         print('Solving sudoku with CDCL using CHB heuristics...\n\n')
-        is_satisfiable, solution = solve_with_cdcl(clauses, num_var, CHBHeuristics())
+        solve_with_cdcl(clauses, num_var, CHBHeuristics())
 
     elif strategy_number == CDCL_VISIDS_STRATEGY:
         print('Solving sudoku with CDCL using VSIDS heuristics...\n\n')
-        is_satisfiable, solution = (clauses, num_var, VSIDSHeuristics())
-
-    if is_satisfiable:
-        save_output(output_file=file_path + '.out', data=solution)
+        solve_with_cdcl(clauses, num_var, VSIDSHeuristics())

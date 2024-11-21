@@ -3,39 +3,90 @@ import time
 
 from Scripts.helpers.dimacs_reader import read_dimacs_file
 from Scripts.helpers.sat_outcome_converter import from_dict_to_matrix, pretty_matrix
+def unit_propagation(clauses, assignment, statistics):
+    """
+    Perform unit propagation until no unit clauses remain.
+    """
+    while True:
+        unit_clauses = [clause[0] for clause in clauses if len(clause) == 1]
+        if not unit_clauses:
+            break
+        for unit in unit_clauses:
+            value = unit > 0
+            assignment[abs(unit)] = value
+            statistics['implications'] += 1
+            statistics['clause_simplifications'] += len([clause for clause in clauses if unit in clause])
+            result = simplify_clauses(clauses, unit)
+            if result is False:
+                statistics['conflicts'] += 1
+                return False, assignment
+            clauses = result
+    return clauses, assignment
 
 
 def simplify_clauses(clauses, literal):
+    """
+    Simplify the clauses by removing those satisfied by the literal
+    and updating others to exclude the negated literal.
+    """
     new_clauses = []
     for clause in clauses:
         if literal in clause:
-            continue  # Clause is satisfied, skip it
+            continue  # Clause is satisfied
         new_clause = [x for x in clause if x != -literal]  # Remove negated literal
-        if not new_clause:  # If a clause becomes empty, a conflict has occurred
-            return []  # Return an empty list instead of False
+        if not new_clause:  # If a clause becomes empty, a conflict occurred
+            return False
         new_clauses.append(new_clause)
     return new_clauses
 
 
-
 def find_pure_literals(clauses):
     """
-    Finds pure literals in the given clauses.
+    Find all pure literals in the current set of clauses.
     """
     counts = {}
     for clause in clauses:
         for literal in clause:
             counts[literal] = counts.get(literal, 0) + 1
-    pure_literals = [lit for lit in counts if -lit not in counts]
-    return pure_literals
+    return [lit for lit in counts if -lit not in counts]
 
 
-def dpll(clauses, statistics: dict, assignment={}):
+def apply_pure_literals(clauses, assignment, statistics):
     """
-    Basic DPLL Algorithm for SAT solving.
+    Assign pure literals to satisfy their corresponding clauses.
     """
+    pure_literals = find_pure_literals(clauses)
+    for pure in pure_literals:
+        assignment[abs(pure)] = pure > 0
+        statistics['implications'] += 1
+        statistics['clause_simplifications'] += len([clause for clause in clauses if pure in clause])
 
+        result = simplify_clauses(clauses, pure)
+        if result is False:
+            statistics['conflicts'] += 1
+            return False, assignment, clauses
+        clauses = result
+    return clauses, assignment, pure_literals
+
+
+def select_variable(clauses, assignment, statistics):
+    """
+    Choose the next variable to assign using a simple heuristic.
+    """
+    for clause in clauses:
+        for literal in clause:
+            if abs(literal) not in assignment:
+                statistics['decisions'] += 1
+                return abs(literal)
+    return None  # No unassigned variables
+
+
+def dpll_recursive(clauses, assignment, statistics):
+    """
+    Recursively attempt to solve the SAT problem using the DPLL algorithm.
+    """
     statistics['recursions'] += 1
+
     # Base case: All clauses are satisfied
     if not clauses:
         return True, assignment, statistics
@@ -45,70 +96,55 @@ def dpll(clauses, statistics: dict, assignment={}):
         statistics['conflicts'] += 1
         return False, {}, statistics
 
-    for clause in clauses:
-        if len(clause) == 1:  # Unit clause found
-            unit = clause[0]
-            value = unit > 0
-            assignment[abs(unit)] = value
-            statistics['implications'] += 1
-            # Simplify clauses with the unit literal
-            result = simplify_clauses(clauses, unit)
-            if result is False:  # Conflict occurred after simplification
-                statistics['conflicts'] += 1
-                return False, {}, statistics
-            clauses = result
-            statistics['clause_simplifications'] += 1
-            return dpll(clauses, statistics, assignment)
+    # Step 1: Perform Unit Propagation
+    clauses, assignment = unit_propagation(clauses, assignment, statistics)
+    if clauses is False:
+        return False, assignment, statistics
 
-        # Pure literal elimination: Assign values to pure literals
-    pure_literals = find_pure_literals(clauses)
-    statistics['pure_literals'] += len(pure_literals)
-    if pure_literals:
-        for pure in pure_literals:
-            assignment[abs(pure)] = pure > 0
-            statistics['implications'] += 1
-            result = simplify_clauses(clauses, pure)
-            if result is False:  # Conflict occurred after pure literal elimination
-                statistics['conflicts'] += 1
-                return False, {}, statistics
-            clauses = result
+    # Step 2: Apply Pure Literal Elimination
+    clauses, assignment, pure_literals = apply_pure_literals(clauses, assignment, statistics)
+    if clauses is False:
+        return False, assignment, statistics
 
-        return dpll(clauses, statistics, assignment)
-
-    # Choose a variable to assign (simple heuristic: first unassigned variable)
-    variable = None  # Initialize variable
-    for clause in clauses:
-        for literal in clause:
-            if abs(literal) not in assignment:
-                variable = abs(literal)
-                statistics['decisions'] += 1
-                break
-        if variable is not None:
-            break
-
-    # If no unassigned variable is found, return
+    # Step 3: Choose a variable to branch on
+    variable = select_variable(clauses, assignment, statistics)
     if variable is None:
-        return False, assignment, statistics  # No variable to assign
+        # Edge case: All variables assigned but no satisfying assignment found
+        satisfied = all(
+            any(literal if literal > 0 else not assignment[abs(literal)] for literal in clause)
+            for clause in clauses
+        )
+        return satisfied, assignment, statistics
 
-    # Try assigning True to the variable
-    new_assignment = assignment.copy()
-    new_assignment[variable] = True
-    statistics['decisions'] += 1
-    result, final_assignment, statistics = dpll(simplify_clauses(clauses, variable), statistics, new_assignment)
-    if result:
-        return True, final_assignment, statistics
+    # Step 4: Recursively try True and False assignments for the selected variable
+    for value in [True, False]:
+        new_assignment = assignment.copy()
+        new_assignment[variable] = value
+        result, final_assignment, statistics = dpll_recursive(
+            simplify_clauses(clauses, variable if value else -variable),
+            new_assignment,
+            statistics,
+        )
+        if result:
+            return True, final_assignment, statistics
 
-    # If assigning True fails, try assigning False
-    statistics['backtracks'] += 1
-    statistics['decisions'] += 1
-    new_assignment[variable] = False
-    statistics['recursions'] += 1
-    return dpll(simplify_clauses(clauses, -variable), statistics, new_assignment)
+        # Update statistics for backtracking
+        statistics['backtracks'] += 1
+
+    # If both branches fail, return unsatisfiable
+    return False, assignment, statistics
+
+
+def dpll(clauses, statistics, assignment={}):
+    """
+    Wrapper function for the DPLL algorithm.
+    """
+    return dpll_recursive(clauses, assignment, statistics)
 
 
 def save_output(filepath, satisfiable, assignment, grid_size=9):
     """
-    Saves the SAT solving results to an output file and a readable Sudoku format.
+    Save the SAT solving results to an output file and a readable Sudoku format.
     """
     output_file = filepath + ".out"
     sudoku_file = filepath.replace(".cnf", ".txt")
@@ -131,7 +167,6 @@ def save_output(filepath, satisfiable, assignment, grid_size=9):
         # Display the Sudoku grid for confirmation
         print("Sudoku solution:")
         print(sudoku_string)
-
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
@@ -156,18 +191,15 @@ if __name__ == "__main__":
         'conflicts': 0,
         'clause_simplifications': 0,
         'pure_literals': 0,
-        'start': None
     }
 
     # Solve the SAT problem
     start = time.time()
-    satisfiable, assignment, statistics = dpll(clauses=combined_clauses, statistics=statistics, assignment={})
+    satisfiable, assignment, statistics = dpll(combined_clauses, statistics, {})
     end = time.time()
 
     # Save the results and display them
     save_output('../examples/sudoku1.cnf', satisfiable, assignment, grid_size=9)
     print(f"Result: {'SATISFIABLE' if satisfiable else 'UNSATISFIABLE'}")
-    if satisfiable:
-        print(f"Satisfying Assignment Size: {len(assignment)}")
-
-        print(statistics)
+    print(f"Execution Time: {end - start:.4f} seconds")
+    print("Solver Statistics:", statistics)

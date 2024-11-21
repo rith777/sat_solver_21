@@ -1,8 +1,8 @@
 UNKNOWN_NUMBER = 0
 
 
-def from_list_to_matrix(data: list, matrix_length=9) -> list:
-    sudoku = _empty_matrix(matrix_length)
+def from_list_to_matrix(data: list):
+    sudoku = _empty_matrix()
 
     for value in data:
         if value > 0:
@@ -16,8 +16,8 @@ def from_list_to_matrix(data: list, matrix_length=9) -> list:
     return sudoku
 
 
-def from_dict_to_matrix(data: dict, matrix_length=9) -> list:
-    sudoku = _empty_matrix(matrix_length)
+def from_dict_to_matrix(data: dict):
+    sudoku = _empty_matrix()
 
     solution = {key for key, value in data.items() if value}
 
@@ -35,8 +35,8 @@ def from_dict_to_cnf(data: dict):
     return [str(key) if value else str(-key) for key, value in data.items()]
 
 
-def _empty_matrix(length=9):
-    return [[0 for _ in range(length)] for _ in range(length)]
+def _empty_matrix():
+    return [[0 for _ in range(9)] for _ in range(9)]
 
 
 def pretty_matrix(matrix):
