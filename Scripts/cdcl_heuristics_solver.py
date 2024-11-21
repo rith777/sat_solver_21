@@ -141,6 +141,7 @@ class CDCLSatSolver:
                     flag = True
                     if status == Status.CONFLICT:
                         self.statistics.increment_conflicts_counter()
+                        self.on_conflict_found()
                         return status
 
                 self.clauses = new_clauses
