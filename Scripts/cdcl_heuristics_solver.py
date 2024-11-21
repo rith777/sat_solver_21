@@ -2,6 +2,8 @@ from collections import namedtuple, defaultdict
 from dataclasses import dataclass
 from enum import Enum, auto
 
+from Scripts.experiments.History import HistoryManager
+
 Pair = namedtuple('Pair', ['first', 'second'])
 
 
@@ -84,6 +86,8 @@ class CDCLSatSolver:
         self.literal_watch = defaultdict(list)
         self.clauses_literal_watched = defaultdict(list)
 
+        self.historyManager = HistoryManager()
+
     def solve(self):
 
         self.unit_propagation()
@@ -94,7 +98,9 @@ class CDCLSatSolver:
         self.heuristics.initialize_scores(self.clauses)
 
         while not self.are_all_variables_assigned():  # While variables remain to assign
+            print(f'assignment size: {len(self.assignment)}')
             variable = self.heuristics.decide(self.assignment)  # Decide : Pick a variable
+            print(f'CDCL - Heuristics will pick a new variable: {variable}')
 
             ###added by rith!!!!
             if variable is None:
@@ -105,6 +111,7 @@ class CDCLSatSolver:
             conflict = self.two_watch_propagate(variable)
 
             while conflict != -1:
+                print('CDCL - handling conflict')
                 self.heuristics.conflict(conflict)
 
                 learned_clause = self.analyze_conflict()  # Diagnose Conflict
@@ -140,13 +147,13 @@ class CDCLSatSolver:
                     self.assignment.append(unit)
                     flag = True
                     if status == Status.CONFLICT:
-                        self.statistics.increment_conflicts_counter()
+                        self.on_conflict_found()
                         return status
 
                 self.clauses = new_clauses
 
                 if not new_clauses:
-                    self.statistics.increment_conflicts_counter()
+                    self.on_conflict_found()
                     return Status.CONFLICT
 
         return Status.SUCCESS
@@ -162,6 +169,10 @@ class CDCLSatSolver:
                 if not clause:
                     return Status.CONFLICT, []
         return Status.SUCCESS, new_clauses
+
+    def on_conflict_found(self):
+        self.statistics.increment_conflicts_counter()
+        self.historyManager.add_conflict(self.statistics.conflicts_counter)
 
     def initialize_watch_list(self):
         for clause_index, clause in enumerate(self.clauses):
@@ -206,7 +217,7 @@ class CDCLSatSolver:
                     self.assignment.append(unit)
                     self.statistics.increment_implications_counter()
                 elif status == ClauseStatus.UNSATISFIED:
-                    self.statistics.increment_conflicts_counter()
+                    self.on_conflict_found()
                     return affected_clause
 
                 for _, value in previously_watched_clauses._asdict().items():
@@ -277,4 +288,6 @@ class CDCLSatSolver:
         del self.assignment[decision_level:]
 
         self.statistics.increment_successful_backjumps_counter()
+
+        print(f'Backjumped to decision level {decision_level}')
         return Status.SUCCESS, -literal
